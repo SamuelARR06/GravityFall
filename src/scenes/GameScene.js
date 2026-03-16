@@ -18,9 +18,21 @@ class GameScene extends Phaser.Scene {
     //  PRELOAD
     // ----------------------------------------------------------
     preload() {
-        this.load.spritesheet('player', 'assets/images/darties.png', {
+        // Spritesheet joueur
+        this.load.spritesheet('player', 'assets/darties.png', {
             frameWidth: 204,
             frameHeight: 250
+        });
+
+        // Images des planètes (depuis assets/planetes/)
+        const planetNames = [
+            'planet_alien', 'planet_crystal', 'planet_desert', 'planet_earth',
+            'planet_fire',  'planet_forest',  'planet_ice',    'planet_jupiter',
+            'planet_lava',  'planet_mars',    'planet_moon',   'planet_saturn',
+            'planet_snow'
+        ];
+        planetNames.forEach(name => {
+            this.load.image(name, `assets/planetes/${name}.png`);
         });
     }
 
@@ -40,44 +52,27 @@ class GameScene extends Phaser.Scene {
 
         this.createStarBackground(WORLD_WIDTH, WORLD_HEIGHT);
 
-        // === PLANÈTES ===
+        // Chaque planète : position, rayon (= taille + gravité), image, type
         this.planetData = [
-            // Départ — grosse planète facile pour apprendre
-            { x: 300,  y: 380, radius: 90,  color: 0x4488ff, type: 'start'  },
-            // Petite planète proche — premier saut facile
-            { x: 620,  y: 310, radius: 38,  color: 0xaa66ff, type: 'normal' },
-            // Moyenne en hauteur
-            { x: 920,  y: 430, radius: 62,  color: 0xff8844, type: 'normal' },
-            // Très petite — danger, peu de temps !
-            { x: 1180, y: 260, radius: 30,  color: 0xff4444, type: 'normal' },
-            // Grosse — refuge mais longue à quitter
-            { x: 1550, y: 420, radius: 85,  color: 0x44ffaa, type: 'normal' },
-            // Deux petites proches — îlots
-            { x: 1880, y: 300, radius: 35,  color: 0xffcc44, type: 'normal' },
-            { x: 2100, y: 200, radius: 32,  color: 0xff88cc, type: 'normal' },
-            // Moyenne
-            { x: 2420, y: 390, radius: 58,  color: 0x88aaff, type: 'normal' },
-            // Grosse en bas
-            { x: 2800, y: 470, radius: 80,  color: 0xff6644, type: 'normal' },
-            // Petite haute — à viser précisément
-            { x: 3100, y: 180, radius: 28,  color: 0xffee44, type: 'normal' },
-            // Moyenne
-            { x: 3430, y: 350, radius: 55,  color: 0xaaff44, type: 'normal' },
-            // Très grosse — difficile à quitter
-            { x: 3850, y: 410, radius: 95,  color: 0xff44cc, type: 'normal' },
-            // Deux petites en escalier
-            { x: 4220, y: 280, radius: 33,  color: 0x44ccff, type: 'normal' },
-            { x: 4490, y: 160, radius: 28,  color: 0xffaa44, type: 'normal' },
-            // Moyenne
-            { x: 4780, y: 370, radius: 60,  color: 0xcc44ff, type: 'normal' },
-            // Grosse
-            { x: 5180, y: 430, radius: 78,  color: 0x44ff88, type: 'normal' },
-            // Petite rapide
-            { x: 5520, y: 250, radius: 32,  color: 0xff6688, type: 'normal' },
-            // Avant-dernière — moyenne
-            { x: 5850, y: 380, radius: 55,  color: 0x88ffcc, type: 'normal' },
-            // Planète safe — grosse et verte, bien visible
-            { x: 6350, y: 340, radius: 100, color: 0x44ff88, type: 'safe'   },
+            { x: 300,  y: 380, radius: 90,  image: 'planet_jupiter', type: 'start'  },
+            { x: 620,  y: 300, radius: 36,  image: 'planet_moon',    type: 'normal' },
+            { x: 920,  y: 430, radius: 62,  image: 'planet_earth',   type: 'normal' },
+            { x: 1180, y: 250, radius: 30,  image: 'planet_fire',    type: 'normal' },
+            { x: 1550, y: 420, radius: 85,  image: 'planet_alien',   type: 'normal' },
+            { x: 1870, y: 290, radius: 34,  image: 'planet_crystal', type: 'normal' },
+            { x: 2090, y: 185, radius: 28,  image: 'planet_ice',     type: 'normal' },
+            { x: 2410, y: 390, radius: 58,  image: 'planet_mars',    type: 'normal' },
+            { x: 2800, y: 460, radius: 80,  image: 'planet_desert',  type: 'normal' },
+            { x: 3100, y: 175, radius: 28,  image: 'planet_forest',  type: 'normal' },
+            { x: 3430, y: 355, radius: 55,  image: 'planet_lava',    type: 'normal' },
+            { x: 3860, y: 415, radius: 95,  image: 'planet_saturn',  type: 'normal' },
+            { x: 4220, y: 270, radius: 33,  image: 'planet_snow',    type: 'normal' },
+            { x: 4490, y: 155, radius: 28,  image: 'planet_ice',     type: 'normal' },
+            { x: 4780, y: 370, radius: 60,  image: 'planet_crystal', type: 'normal' },
+            { x: 5175, y: 435, radius: 78,  image: 'planet_alien',   type: 'normal' },
+            { x: 5515, y: 248, radius: 32,  image: 'planet_fire',    type: 'normal' },
+            { x: 5845, y: 380, radius: 55,  image: 'planet_mars',    type: 'normal' },
+            { x: 6350, y: 345, radius: 100, image: 'planet_earth',   type: 'safe'   },
         ];
 
         // Tableaux pour stocker les objets visuels et physiques
@@ -210,55 +205,46 @@ class GameScene extends Phaser.Scene {
     }
 
     // ----------------------------------------------------------
-    //  Création d'une planète
+    //  Création d'une planète avec vraie image
     // ----------------------------------------------------------
     createPlanet(data, index) {
 
         // === ANNEAUX DE CHAMP GRAVITATIONNEL ===
-        // Plus la planète est grosse, plus les anneaux sont grands et visibles
-        // Rayon du champ = radius * facteur (3 anneaux concentriques)
-        // Opacité décroissante vers l'extérieur (le champ s'affaiblit)
-        const fieldFactor = [2.2, 3.5, 5.0]; // multiplicateurs de rayon
-        const fieldAlpha  = [0.18, 0.10, 0.05]; // opacité de chaque anneau
+        const fieldFactor = [2.2, 3.5, 5.0];
+        const fieldAlpha  = [0.18, 0.10, 0.05];
 
-        fieldFactor.forEach((factor, i) => {
-            const ringRadius = data.radius * factor;
-            const ring = this.add.circle(data.x, data.y, ringRadius, data.color, 0);
-            ring.setStrokeStyle(1.5, data.color, fieldAlpha[i]);
+        fieldFactor.forEach((factor) => {
+            const ring = this.add.circle(data.x, data.y, data.radius * factor, 0xffffff, 0);
+            ring.setStrokeStyle(1.5, 0xaaddff, fieldAlpha[fieldFactor.indexOf(factor)]);
         });
 
-        // Animation de "pulsation" sur le premier anneau pour montrer l'attraction
-        const pulseRing = this.add.circle(data.x, data.y, data.radius * 2.2, data.color, 0);
-        pulseRing.setStrokeStyle(1, data.color, 0.25);
+        // Anneau pulsant — plus lent sur les grosses planètes
+        const pulseRing = this.add.circle(data.x, data.y, data.radius * 2.2, 0xffffff, 0);
+        pulseRing.setStrokeStyle(1, 0x88ccff, 0.3);
         this.tweens.add({
             targets: pulseRing,
-            scaleX: 1 + (data.radius / 100) * 0.4, // plus la planète est grosse, plus ça pulse fort
+            scaleX: 1 + (data.radius / 100) * 0.4,
             scaleY: 1 + (data.radius / 100) * 0.4,
             alpha: 0,
-            duration: 1200 + data.radius * 10, // grosse planète = pulse plus lent
+            duration: 1200 + data.radius * 10,
             repeat: -1,
             ease: 'Sine.easeOut'
         });
 
-        // === VISUEL PLANÈTE ===
-        const circle = this.add.circle(data.x, data.y, data.radius, data.color);
-        circle.setStrokeStyle(2, 0xffffff, 0.4);
+        // === IMAGE DE LA PLANÈTE ===
+        // On utilise add.image() et on la redimensionne au diamètre voulu
+        const img = this.add.image(data.x, data.y, data.image);
+        img.setDisplaySize(data.radius * 2, data.radius * 2);
 
-        // Reflet lumineux
-        this.add.circle(
-            data.x - data.radius * 0.3,
-            data.y - data.radius * 0.3,
-            data.radius * 0.18,
-            0xffffff, 0.35
-        );
-
+        // Label SAFE
         if (data.type === 'safe') {
             this.add.text(data.x, data.y - data.radius - 28, '★ SAFE', {
                 fontSize: '20px', color: '#44ff88', fontFamily: 'Arial Black'
             }).setOrigin(0.5);
         }
 
-        this.planetGraphics.push(circle);
+        // On stocke l'image (pas un cercle) dans planetGraphics
+        this.planetGraphics.push(img);
     }
 
     // ----------------------------------------------------------
@@ -600,10 +586,9 @@ class GameScene extends Phaser.Scene {
                 if (gfx.active) {
                     gfx.setScale(1 - progress * 0.45);
                     gfx.setAlpha(1 - progress * 0.5);
-                    // Teinte qui vire au rouge
-                    const r = Math.floor(255);
+                    // Teinte rouge progressive (setTint fonctionne sur les images)
                     const g = Math.floor(255 * (1 - progress));
-                    gfx.setFillStyle(Phaser.Display.Color.GetColor(r, g, 50));
+                    gfx.setTint(Phaser.Display.Color.GetColor(255, g, 50));
                 }
 
                 // Débris visuels
