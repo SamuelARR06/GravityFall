@@ -137,6 +137,24 @@ class GameScene extends Phaser.Scene {
         this.startTime = this.time.now;
         this.showControls();
 
+        // Charge du saut (0 à 1)
+        // Plus la planète est grosse, plus il faut maintenir ESPACE longtemps
+        this.jumpCharge    = 0;
+        this.isCharging    = false;
+        this.justLaunched  = false; // empêche le re-atterrissage immédiat
+
+        // Barre de charge visuelle (HUD)
+        // Fond gris
+        this.chargeBarBg = this.add.rectangle(640, 690, 200, 18, 0x333333)
+            .setScrollFactor(0).setDepth(100).setVisible(false);
+        // Barre colorée qui grandit
+        this.chargeBar = this.add.rectangle(541, 690, 0, 14, 0xffcc00)
+            .setScrollFactor(0).setDepth(101).setOrigin(0, 0.5).setVisible(false);
+        // Texte "Charge"
+        this.chargeText = this.add.text(640, 672, 'CHARGE', {
+            fontSize: '13px', fontFamily: 'Arial Black', color: '#ffcc00'
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(101).setVisible(false);
+
         // On place le joueur correctement sur la planète de départ
         this.snapToPlanet(0, -Math.PI / 2);
     }
@@ -146,16 +164,26 @@ class GameScene extends Phaser.Scene {
     // ----------------------------------------------------------
     snapToPlanet(planetIndex, angle) {
         const data   = this.planetData[planetIndex];
-        const offset = data.radius + 24; // distance surface → centre joueur
+        const offset = data.radius + 24;
 
         this.player.x = data.x + Math.cos(angle) * offset;
         this.player.y = data.y + Math.sin(angle) * offset;
         this.player.body.setVelocity(0, 0);
 
         this.currentPlanetIndex = planetIndex;
-        this.angle = angle;
+        this.angle      = angle;
         this.isOnPlanet = true;
         this.isFlying   = false;
+
+        // Reset de la charge au repos
+        this.jumpCharge = 0;
+        this.isCharging = false;
+        if (this.chargeBar) {
+            this.chargeBarBg.setVisible(false);
+            this.chargeBar.setVisible(false);
+            this.chargeText.setVisible(false);
+            this.chargeBar.setSize(0, 14);
+        }
     }
 
     // ----------------------------------------------------------
@@ -261,68 +289,129 @@ class GameScene extends Phaser.Scene {
         // Stopper la vélocité (on gère la position manuellement)
         this.player.body.setVelocity(0, 0);
 
-        // ESPACE = saut catapulte
-        if (Phaser.Input.Keyboard.JustDown(this.cursors.space)) {
+        // ESPACE maintenu = charger le saut
+        if (this.cursors.space.isDown) {
+            this.chargeJump();
+        }
+
+        // Relâcher ESPACE = lancer si on était en train de charger
+        if (Phaser.Input.Keyboard.JustUp(this.cursors.space) && this.jumpCharge > 0) {
             this.launchFromPlanet();
         }
     }
 
     // ----------------------------------------------------------
-    //  Lancement depuis une planète
+    //  Charge progressive du saut
     // ----------------------------------------------------------
-    launchFromPlanet() {
+    chargeJump() {
         const data = this.planetData[this.currentPlanetIndex];
 
-        // Direction d'éjection = vers l'extérieur (radiale)
-        // + légère composante tangentielle pour aller vers la prochaine planète
+        // Plus la planète est grosse, plus il faut de temps pour charger
+        // Petite planète (r=50) : charge rapide (~0.8s)
+        // Grande planète (r=90) : charge lente (~1.8s)
+        const chargeSpeed = 0.6 / data.radius; // radians/frame normalisé
+
+        this.jumpCharge = Math.min(1, this.jumpCharge + chargeSpeed);
+        this.isCharging = true;
+
+        // Mettre à jour la barre visuelle
+        this.chargeBarBg.setVisible(true);
+        this.chargeBar.setVisible(true);
+        this.chargeText.setVisible(true);
+
+        // Largeur max de la barre = 196px
+        const barWidth = Math.floor(this.jumpCharge * 196);
+        this.chargeBar.setSize(barWidth, 14);
+
+        // Couleur : jaune → orange → rouge selon la charge
+        if (this.jumpCharge < 0.5) {
+            this.chargeBar.setFillStyle(0xffcc00); // jaune
+        } else if (this.jumpCharge < 0.85) {
+            this.chargeBar.setFillStyle(0xff8800); // orange
+        } else {
+            this.chargeBar.setFillStyle(0xff2200); // rouge = charge max
+        }
+
+        // Le joueur "tremble" légèrement quand il charge
+        const shake = (this.jumpCharge * 2) * (Math.random() - 0.5);
+        this.playerSprite.x = this.player.x + shake;
+        this.playerSprite.y = this.player.y + shake;
+    }
+
+    // ----------------------------------------------------------
+    //  Lancement depuis une planète (force = charge × vitesse max)
+    // ----------------------------------------------------------
+    launchFromPlanet() {
+        const data   = this.planetData[this.currentPlanetIndex];
+        const charge = this.jumpCharge;
+
+        // Réinitialiser la charge et cacher la barre
+        this.jumpCharge = 0;
+        this.isCharging = false;
+        this.chargeBarBg.setVisible(false);
+        this.chargeBar.setVisible(false);
+        this.chargeText.setVisible(false);
+        this.chargeBar.setSize(0, 14);
+
+        // Direction radiale = vers l'extérieur de la planète
         const radialX = Math.cos(this.angle);
         const radialY = Math.sin(this.angle);
 
-        // Trouver la prochaine planète vivante à droite
-        let nextPlanet    = null;
-        let nextPlanetIdx = -1;
-        let minDist       = Infinity;
+        // Vitesse max dépend de la charge (0.2 → 1.0)
+        // On impose un minimum de 0.2 pour éviter un micro-saut
+        const chargeEffective = Math.max(0.2, charge);
+
+        // Force d'éjection : plus la planète est grosse, plus la gravité
+        // est forte, donc on compense avec une force de base plus élevée
+        const baseLaunchForce = 300 + data.radius * 3.5;
+        const launchForce     = baseLaunchForce * chargeEffective;
+
+        // Trouver la prochaine planète vivante
+        let nextPlanet = null;
+        let minDist    = Infinity;
 
         this.planetData.forEach((p, i) => {
-            if (i !== this.currentPlanetIndex && this.planetAlive[i] && p.x > data.x - 100) {
+            if (i !== this.currentPlanetIndex && this.planetAlive[i]) {
                 const dist = Math.sqrt((p.x - data.x) ** 2 + (p.y - data.y) ** 2);
                 if (dist < minDist) {
-                    minDist       = dist;
-                    nextPlanet    = p;
-                    nextPlanetIdx = i;
+                    minDist    = dist;
+                    nextPlanet = p;
                 }
             }
         });
 
         let vx, vy;
 
-        if (nextPlanet) {
-            // Calculer la vélocité pour atteindre la prochaine planète
-            const targetX = nextPlanet.x;
-            const targetY = nextPlanet.y;
-            const dx = targetX - this.player.x;
-            const dy = targetY - this.player.y;
-            const t  = 1.0; // durée de vol estimée
+        if (nextPlanet && charge > 0.4) {
+            // Charge suffisante : on vise la prochaine planète
+            const dx = nextPlanet.x - this.player.x;
+            const dy = nextPlanet.y - this.player.y;
+            const t  = 0.9 + (1 - charge) * 0.5; // plus la charge est faible, plus c'est lent
+            const g  = this.G * data.radius / (minDist * minDist);
 
-            // On ajoute une composante radiale (éjection) + direction vers cible
-            vx = (dx / t) * 0.6 + radialX * 200;
-            vy = (dy / t) * 0.6 + radialY * 200;
+            vx = (dx / t) * 0.55 + radialX * launchForce * 0.45;
+            vy = (dy / t) * 0.55 + radialY * launchForce * 0.45;
 
-            // Limiter la vitesse max
             const speed = Math.sqrt(vx * vx + vy * vy);
-            const MAX   = 550;
+            const MAX   = 200 + launchForce;
             if (speed > MAX) { vx = (vx / speed) * MAX; vy = (vy / speed) * MAX; }
 
         } else {
-            // Pas de planète trouvée : éjection pure
-            vx = radialX * 400;
-            vy = radialY * 400;
+            // Charge insuffisante : éjection radiale pure (retombe sur la même planète)
+            vx = radialX * launchForce;
+            vy = radialY * launchForce;
         }
 
         this.player.body.setVelocity(vx, vy);
-        this.isOnPlanet = false;
-        this.isFlying   = true;
+        this.isOnPlanet  = false;
+        this.isFlying    = true;
+        this.justLaunched = true; // immunité temporaire contre re-atterrissage immédiat
         this.playerSprite.anims.play('jump', true);
+
+        // Après 400ms, on autorise à nouveau l'atterrissage
+        this.time.delayedCall(400, () => {
+            this.justLaunched = false;
+        });
     }
 
     // ----------------------------------------------------------
@@ -370,9 +459,9 @@ class GameScene extends Phaser.Scene {
         const vy = this.player.body.velocity.y;
         this.player.rotation = Math.atan2(vy, vx) + Math.PI / 2;
 
-        // Détecter l'atterrissage : si on est assez proche de la surface
+        // Détecter l'atterrissage — ignoré si on vient de décoller
         const landingDist = target.radius + 28;
-        if (dist < landingDist) {
+        if (dist < landingDist && !this.justLaunched) {
             // Calcul de l'angle d'atterrissage
             const landAngle = Math.atan2(
                 this.player.y - target.y,
