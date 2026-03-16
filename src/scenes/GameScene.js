@@ -143,8 +143,8 @@ class GameScene extends Phaser.Scene {
         this.isFlying       = false;         // en vol entre planètes ?
         this.gameOver       = false;
 
-        // Constante gravitationnelle
-        this.G = 18000;
+        // Constante gravitationnelle — augmentée pour un effet bien visible
+        this.G = 45000;
 
         // === MUR INVISIBLE ===
         this.createInvisibleWall();
@@ -213,6 +213,34 @@ class GameScene extends Phaser.Scene {
     //  Création d'une planète
     // ----------------------------------------------------------
     createPlanet(data, index) {
+
+        // === ANNEAUX DE CHAMP GRAVITATIONNEL ===
+        // Plus la planète est grosse, plus les anneaux sont grands et visibles
+        // Rayon du champ = radius * facteur (3 anneaux concentriques)
+        // Opacité décroissante vers l'extérieur (le champ s'affaiblit)
+        const fieldFactor = [2.2, 3.5, 5.0]; // multiplicateurs de rayon
+        const fieldAlpha  = [0.18, 0.10, 0.05]; // opacité de chaque anneau
+
+        fieldFactor.forEach((factor, i) => {
+            const ringRadius = data.radius * factor;
+            const ring = this.add.circle(data.x, data.y, ringRadius, data.color, 0);
+            ring.setStrokeStyle(1.5, data.color, fieldAlpha[i]);
+        });
+
+        // Animation de "pulsation" sur le premier anneau pour montrer l'attraction
+        const pulseRing = this.add.circle(data.x, data.y, data.radius * 2.2, data.color, 0);
+        pulseRing.setStrokeStyle(1, data.color, 0.25);
+        this.tweens.add({
+            targets: pulseRing,
+            scaleX: 1 + (data.radius / 100) * 0.4, // plus la planète est grosse, plus ça pulse fort
+            scaleY: 1 + (data.radius / 100) * 0.4,
+            alpha: 0,
+            duration: 1200 + data.radius * 10, // grosse planète = pulse plus lent
+            repeat: -1,
+            ease: 'Sine.easeOut'
+        });
+
+        // === VISUEL PLANÈTE ===
         const circle = this.add.circle(data.x, data.y, data.radius, data.color);
         circle.setStrokeStyle(2, 0xffffff, 0.4);
 
@@ -223,6 +251,22 @@ class GameScene extends Phaser.Scene {
             data.radius * 0.18,
             0xffffff, 0.35
         );
+
+        // Indicateur de taille de gravité : petit texte avec le rayon
+        // Petite planète = "G faible", grosse = "G forte"
+        let gravLabel = '';
+        if (data.radius <= 35)       gravLabel = 'G faible';
+        else if (data.radius <= 65)  gravLabel = 'G moyen';
+        else                          gravLabel = 'G fort';
+
+        const gravColor = data.radius <= 35 ? '#88ff88' :
+                          data.radius <= 65 ? '#ffcc44' : '#ff6644';
+
+        if (data.type !== 'safe') {
+            this.add.text(data.x, data.y + data.radius + 14, gravLabel, {
+                fontSize: '11px', color: gravColor, fontFamily: 'Arial'
+            }).setOrigin(0.5).setAlpha(0.7);
+        }
 
         if (data.type === 'safe') {
             this.add.text(data.x, data.y - data.radius - 28, '★ SAFE', {
@@ -466,7 +510,7 @@ class GameScene extends Phaser.Scene {
 
         // F = G * rayon / dist²  (le rayon = "masse" approx.)
         const force = Phaser.Math.Clamp(
-            this.G * target.radius / (dist * dist), 0, 600
+            this.G * target.radius / (dist * dist), 0, 900
         );
 
         // Appliquer l'accélération gravitationnelle
