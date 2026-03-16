@@ -29,7 +29,7 @@ class GameScene extends Phaser.Scene {
     // ----------------------------------------------------------
     create() {
 
-        const WORLD_WIDTH  = 8000;
+        const WORLD_WIDTH  = 7000;
         const WORLD_HEIGHT = 720;
         this.physics.world.setBounds(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
         this.cameras.main.setBounds(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
@@ -42,19 +42,42 @@ class GameScene extends Phaser.Scene {
 
         // === PLANÈTES ===
         this.planetData = [
-            { x: 300,  y: 360, radius: 80,  color: 0x4488ff, type: 'start'  },
-            { x: 780,  y: 340, radius: 60,  color: 0xaa66ff, type: 'normal' },
-            { x: 1280, y: 370, radius: 70,  color: 0xff8844, type: 'normal' },
-            { x: 1820, y: 330, radius: 55,  color: 0x44ffaa, type: 'normal' },
-            { x: 2350, y: 360, radius: 65,  color: 0xff4488, type: 'normal' },
-            { x: 2900, y: 345, radius: 50,  color: 0xffcc44, type: 'normal' },
-            { x: 3450, y: 365, radius: 75,  color: 0x88aaff, type: 'normal' },
-            { x: 4000, y: 340, radius: 60,  color: 0xff6644, type: 'normal' },
-            { x: 4550, y: 355, radius: 55,  color: 0xaaff44, type: 'normal' },
-            { x: 5100, y: 370, radius: 70,  color: 0xff44cc, type: 'normal' },
-            { x: 5650, y: 345, radius: 50,  color: 0x44ccff, type: 'normal' },
-            { x: 6200, y: 360, radius: 65,  color: 0xffaa44, type: 'normal' },
-            { x: 6900, y: 355, radius: 90,  color: 0x44ff88, type: 'safe'   },
+            // Départ — grosse planète facile pour apprendre
+            { x: 300,  y: 380, radius: 90,  color: 0x4488ff, type: 'start'  },
+            // Petite planète proche — premier saut facile
+            { x: 620,  y: 310, radius: 38,  color: 0xaa66ff, type: 'normal' },
+            // Moyenne en hauteur
+            { x: 920,  y: 430, radius: 62,  color: 0xff8844, type: 'normal' },
+            // Très petite — danger, peu de temps !
+            { x: 1180, y: 260, radius: 30,  color: 0xff4444, type: 'normal' },
+            // Grosse — refuge mais longue à quitter
+            { x: 1550, y: 420, radius: 85,  color: 0x44ffaa, type: 'normal' },
+            // Deux petites proches — îlots
+            { x: 1880, y: 300, radius: 35,  color: 0xffcc44, type: 'normal' },
+            { x: 2100, y: 200, radius: 32,  color: 0xff88cc, type: 'normal' },
+            // Moyenne
+            { x: 2420, y: 390, radius: 58,  color: 0x88aaff, type: 'normal' },
+            // Grosse en bas
+            { x: 2800, y: 470, radius: 80,  color: 0xff6644, type: 'normal' },
+            // Petite haute — à viser précisément
+            { x: 3100, y: 180, radius: 28,  color: 0xffee44, type: 'normal' },
+            // Moyenne
+            { x: 3430, y: 350, radius: 55,  color: 0xaaff44, type: 'normal' },
+            // Très grosse — difficile à quitter
+            { x: 3850, y: 410, radius: 95,  color: 0xff44cc, type: 'normal' },
+            // Deux petites en escalier
+            { x: 4220, y: 280, radius: 33,  color: 0x44ccff, type: 'normal' },
+            { x: 4490, y: 160, radius: 28,  color: 0xffaa44, type: 'normal' },
+            // Moyenne
+            { x: 4780, y: 370, radius: 60,  color: 0xcc44ff, type: 'normal' },
+            // Grosse
+            { x: 5180, y: 430, radius: 78,  color: 0x44ff88, type: 'normal' },
+            // Petite rapide
+            { x: 5520, y: 250, radius: 32,  color: 0xff6688, type: 'normal' },
+            // Avant-dernière — moyenne
+            { x: 5850, y: 380, radius: 55,  color: 0x88ffcc, type: 'normal' },
+            // Planète safe — grosse et verte, bien visible
+            { x: 6350, y: 340, radius: 100, color: 0x44ff88, type: 'safe'   },
         ];
 
         // Tableaux pour stocker les objets visuels et physiques
@@ -216,7 +239,7 @@ class GameScene extends Phaser.Scene {
     createInvisibleWall() {
         const safe = this.planetData[this.planetData.length - 1];
         this.invisibleWall = this.physics.add.staticImage(
-            safe.x - 300, safe.y, '__DEFAULT'
+            safe.x - 320, safe.y, '__DEFAULT'
         );
         this.invisibleWall.setDisplaySize(15, 300);
         this.invisibleWall.setAlpha(0);
@@ -246,8 +269,8 @@ class GameScene extends Phaser.Scene {
         this.timerText.setText('Temps : ' + elapsed + 's');
 
         // Mort si sort de la map
-        if (this.player.y > 750 || this.player.y < -100 ||
-            this.player.x < -100 || this.player.x > 8100) {
+        if (this.player.y > 700 || this.player.y < -150 ||
+            this.player.x < -100 || this.player.x > 7100) {
             this.onDeath();
         }
     }
