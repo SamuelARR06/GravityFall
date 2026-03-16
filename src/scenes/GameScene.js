@@ -252,22 +252,6 @@ class GameScene extends Phaser.Scene {
             0xffffff, 0.35
         );
 
-        // Indicateur de taille de gravité : petit texte avec le rayon
-        // Petite planète = "G faible", grosse = "G forte"
-        let gravLabel = '';
-        if (data.radius <= 35)       gravLabel = 'G faible';
-        else if (data.radius <= 65)  gravLabel = 'G moyen';
-        else                          gravLabel = 'G fort';
-
-        const gravColor = data.radius <= 35 ? '#88ff88' :
-                          data.radius <= 65 ? '#ffcc44' : '#ff6644';
-
-        if (data.type !== 'safe') {
-            this.add.text(data.x, data.y + data.radius + 14, gravLabel, {
-                fontSize: '11px', color: gravColor, fontFamily: 'Arial'
-            }).setOrigin(0.5).setAlpha(0.7);
-        }
-
         if (data.type === 'safe') {
             this.add.text(data.x, data.y - data.radius - 28, '★ SAFE', {
                 fontSize: '20px', color: '#44ff88', fontFamily: 'Arial Black'
