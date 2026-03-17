@@ -72,12 +72,12 @@ class MenuScene extends Phaser.Scene {
         spaceKey.once('down', () => {
             // once() = écouté une seule fois
             // On lance la scène principale
-            this.scene.start('GameScene');
+            this.scene.start('GameScene', { level: 1 });
         });
 
         // On peut aussi cliquer/taper sur l'écran pour lancer le jeu
         this.input.once('pointerdown', () => {
-            this.scene.start('GameScene');
+            this.scene.start('GameScene', { level: 1 });
         });
 
         // --- Étoiles de fond (générées aléatoirement) ---
