@@ -368,7 +368,13 @@ class GameScene extends Phaser.Scene {
         this.player.rotation = this.angle + Math.PI / 2;
         this.player.body.setVelocity(0, 0);
 
-        if (this.cursors.space.isDown) this.chargeJump();
+        if (this.cursors.space.isDown) {
+            // Garantir une charge minimale dès le premier appui
+            if (this.jumpCharge === 0) this.jumpCharge = 0.05;
+            this.chargeJump();
+        }
+
+        // Lancer dès que ESPACE est relâché, même si la charge est très faible
         if (Phaser.Input.Keyboard.JustUp(this.cursors.space) && this.jumpCharge > 0) {
             this.launchFromPlanet();
         }
@@ -822,7 +828,7 @@ class GameScene extends Phaser.Scene {
                 toRemove.push(idx);
             }
         });
-        
+
         toRemove.reverse().forEach(idx => {
             const obj = this.flyingObjects[idx];
             obj.body.destroy();
