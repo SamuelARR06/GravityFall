@@ -822,7 +822,7 @@ class GameScene extends Phaser.Scene {
                 toRemove.push(idx);
             }
         });
-
+        
         toRemove.reverse().forEach(idx => {
             const obj = this.flyingObjects[idx];
             obj.body.destroy();
