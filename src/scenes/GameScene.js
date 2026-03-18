@@ -63,8 +63,8 @@ class GameScene extends Phaser.Scene {
         this.showLevelBanner();
         // Config par niveau (délais comètes et météorites)
         this.levelConfig = {
-            1: { cometDelay: 9000, trumpEvery: 3, epsteinEvery: 99, meteorDelay: 4000 },
-            2: { cometDelay: 6000, trumpEvery: 2, epsteinEvery: 99, meteorDelay: 3000 },
+            1: { cometDelay: 9000, trumpEvery: 3, meteorDelay: 4000 },
+            2: { cometDelay: 6000, trumpEvery: 2, meteorDelay: 3000 },
             3: { cometDelay: 3000, trumpEvery: 2, epsteinEvery: 3,  meteorDelay: 2000 },
         }[this.level];
         this.planetData    = this.buildPlanetData();
@@ -95,6 +95,7 @@ class GameScene extends Phaser.Scene {
             this.anims.create({ key: 'jump',       frames: [{ key: 'player', frame: 15 }], frameRate: 1,  repeat: 0  });
         }
         this.playerSprite.anims.play('idle');
+
         // Variables d'état du joueur
         this.angle              = -Math.PI / 2; // angle sur la planète (marche circulaire)
         this.currentPlanetIndex = 0;
@@ -103,8 +104,10 @@ class GameScene extends Phaser.Scene {
         this.gameOver           = false;
         this.G                  = 28000; // constante gravitationnelle custom
         this.blackHoleActive    = false;
+
         // darties.fr — bases Phaser : clavier avec createCursorKeys()
         this.cursors = this.input.keyboard.createCursorKeys();
+
         // darties.fr — collisions : overlap() détecte le contact joueur/planète sans rebond
         this.physics.add.overlap(
             this.player,
@@ -120,8 +123,10 @@ class GameScene extends Phaser.Scene {
             },
             null, this
         );
+
         // darties.fr — bases Phaser : caméra qui suit le joueur
         this.cameras.main.startFollow(this.player, true, 0.08, 0.08);
+
         // darties.fr — chronomètre : UI avec texte mis à jour chaque frame
         this.createUI();
         this.startTime = this.time.now;
@@ -129,6 +134,7 @@ class GameScene extends Phaser.Scene {
         this.jumpCharge   = 0;
         this.isCharging   = false;
         this.justLaunched = false;
+
         // Barre de charge visuelle (HUD fixe via setScrollFactor(0))
         this.chargeBarBg = this.add.rectangle(640, 690, 200, 18, 0x333333)
             .setScrollFactor(0).setDepth(100).setVisible(false);
@@ -138,10 +144,12 @@ class GameScene extends Phaser.Scene {
             fontSize: '13px', fontFamily: 'Arial Black', color: '#ffcc00'
         }).setOrigin(0.5).setScrollFactor(0).setDepth(101).setVisible(false);
         this.snapToPlanet(0, -Math.PI / 2);
+
         // Musique de fond — repart à chaque début de niveau
         this.sound.stopAll();
         this.bgMusic = this.sound.add('music', { loop: true, volume: 0.5 });
         this.bgMusic.play();
+
         // darties.fr — tir/balles : physics.add.group() pour gérer les projectiles (comètes)
         // Même pattern que le tuto "Rajouter une fonction de tir, des balles et des cibles"
         this.cometsGroup = this.physics.add.group();
@@ -373,7 +381,7 @@ class GameScene extends Phaser.Scene {
         const dist   = Math.sqrt(dx * dx + dy * dy);
         const delta  = this.game.loop.delta / 1000;
         // darties.fr — bases Phaser : setVelocityX/Y pour appliquer la force
-        const force = Phaser.Math.Clamp(this.G * target.radius / (dist * dist), 0, 900);
+        const force = Phaser.Math.Clamp(this.G * target.radius / (dist * dist)*2, 0, 1200);
         this.player.body.setVelocityX(this.player.body.velocity.x + (dx / dist) * force * delta);
         this.player.body.setVelocityY(this.player.body.velocity.y + (dy / dist) * force * delta);
         // Répulsion des planètes répulsives (même logique, force inversée)
