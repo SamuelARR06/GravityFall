@@ -23,7 +23,7 @@ class MenuScene extends Phaser.Scene {
         const { width, height } = this.scale;
 
         // --- Titre du jeu ---
-        this.add.text(width / 2, height / 3, 'PLANET HOPPER', {
+        this.add.text(width / 2, height / 3, 'Gravity Fall', {
             fontSize: '72px',
             fontFamily: 'Arial Black',
             color: '#ffffff',
