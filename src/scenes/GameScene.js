@@ -10,21 +10,14 @@
 // ============================================================
 
 class GameScene extends Phaser.Scene {
-
     constructor() {
         super({ key: 'GameScene' });
     }
-
-    // ---
-    //  INIT — reçoit le numéro de niveau depuis scene.start()
-    // ---
+    // INIT — reçoit le numéro de niveau depuis scene.start()
     init(data) {
         this.level = data.level || 1;
     }
-
-    // ---
-    //  PRELOAD
-    // ---
+    // PRELOAD
     preload() {
         this.load.spritesheet('player', 'assets/darties.png', {
             frameWidth: 204,
@@ -43,11 +36,11 @@ class GameScene extends Phaser.Scene {
 
         this.load.image('trump',   'assets/trump.png');
         this.load.image('epstein', 'assets/epstein.png');
+        // Fond étoilé via Tiled
+        this.load.tilemapTiledJSON('space_map', 'assets/space_map.json');
+        this.load.image('space_tileset', 'assets/space_tileset.png');
     }
-
-    // ---
-    //  CREATE
-    // ---
+    // CREATE
     create() {
         const WORLD_WIDTH  = this.level === 1 ? 4500 :
                              this.level === 2 ? 5800 : 7500;
@@ -56,30 +49,25 @@ class GameScene extends Phaser.Scene {
         this.physics.world.setBounds(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
         this.cameras.main.setBounds(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
         this.physics.world.gravity.set(0, 0);
-
-        this.createStarBackground(WORLD_WIDTH, WORLD_HEIGHT);
+        // Fond étoilé via Tiled
+        this.createTiledBackground();
         this.showLevelBanner();
-
         // Config par niveau
         this.levelConfig = {
             1: { cometDelay: 9000,  trumpEvery: 3, epsteinEvery: 99, meteorDelay: 4000 },
             2: { cometDelay: 6000,  trumpEvery: 2, epsteinEvery: 99, meteorDelay: 3000 },
             3: { cometDelay: 3000,  trumpEvery: 2, epsteinEvery: 3,  meteorDelay: 2000 },
         }[this.level];
-
         // Planètes selon le niveau
         this.planetData = this.buildPlanetData();
-
         this.planetGraphics = [];
         this.planetAlive    = [];
         // Groupe statique Phaser pour les hitboxes carrées des planètes
         this.planetBodies   = this.physics.add.staticGroup();
-
         this.planetData.forEach((data, i) => {
             this.createPlanet(data, i);
             this.planetAlive.push(true);
         });
-
         // === JOUEUR ===
         const start = this.planetData[0];
         this.player = this.physics.add.image(
@@ -89,11 +77,9 @@ class GameScene extends Phaser.Scene {
         this.player.setTint(0xffffff);
         this.player.setDepth(10);
         this.player.body.setAllowGravity(false);
-
         this.playerSprite = this.add.sprite(this.player.x, this.player.y, 'player');
         this.playerSprite.setDisplaySize(48, 60);
         this.playerSprite.setDepth(11);
-
         // === ANIMATIONS ===
         if (!this.anims.exists('idle')) {
             this.anims.create({ key: 'idle',       frames: [{ key: 'player', frame: 0 }], frameRate: 1,  repeat: 0  });
@@ -102,7 +88,6 @@ class GameScene extends Phaser.Scene {
             this.anims.create({ key: 'jump',       frames: [{ key: 'player', frame: 15 }], frameRate: 1, repeat: 0  });
         }
         this.playerSprite.anims.play('idle');
-
         // === ÉTAT ===
         this.angle              = -Math.PI / 2;
         this.currentPlanetIndex = 0;
@@ -111,10 +96,8 @@ class GameScene extends Phaser.Scene {
         this.gameOver           = false;
         this.G                  = 45000;
         this.blackHoleActive    = false;
-
         // === CLAVIER ===
         this.cursors = this.input.keyboard.createCursorKeys();
-
         // === OVERLAP Phaser joueur ↔ planètes (hitboxes carrées) ===
         // overlap() = détecte le chevauchement sans rebond physique
         this.physics.add.overlap(
@@ -133,20 +116,16 @@ class GameScene extends Phaser.Scene {
             null,
             this
         );
-
         // === CAMÉRA ===
         this.cameras.main.startFollow(this.player, true, 0.08, 0.08);
-
         // === UI ===
         this.createUI();
         this.startTime = this.time.now;
         this.showControls();
-
         // === BARRE DE CHARGE ===
         this.jumpCharge   = 0;
         this.isCharging   = false;
         this.justLaunched = false;
-
         this.chargeBarBg = this.add.rectangle(640, 690, 200, 18, 0x333333)
             .setScrollFactor(0).setDepth(100).setVisible(false);
         this.chargeBar = this.add.rectangle(541, 690, 0, 14, 0xffcc00)
@@ -156,7 +135,6 @@ class GameScene extends Phaser.Scene {
         }).setOrigin(0.5).setScrollFactor(0).setDepth(101).setVisible(false);
 
         this.snapToPlanet(0, -Math.PI / 2);
-
         // === COMÈTES & MÉTÉORITES ===
         this.flyingObjects = [];
         this.time.addEvent({
@@ -166,10 +144,7 @@ class GameScene extends Phaser.Scene {
             callbackScope: this
         });
     }
-
-    // ---
-    //  Construction des planètes selon le niveau
-    // ---
+    // Construction des planètes selon le niveau
     buildPlanetData() {
         const all = [
             { x: 300,  y: 370, radius: 90,  image: 'planet_jupiter', debrisColor: 0xffaa44 },
@@ -188,9 +163,7 @@ class GameScene extends Phaser.Scene {
 
         const counts = { 1: 5, 2: 7, 3: 10 };
         const count  = counts[this.level];
-
         const planets = all.slice(0, count);
-
         // Planète safe
         const safeX = planets[planets.length - 1].x + Phaser.Math.Between(550, 700);
         planets.push({
@@ -199,12 +172,10 @@ class GameScene extends Phaser.Scene {
             debrisColor: 0x44aaff,
             type: 'safe'
         });
-
         // Marquer les autres comme 'normal' ou 'start'
         planets.forEach((p, i) => {
             if (!p.type) p.type = i === 0 ? 'start' : 'normal';
         });
-
         // Niveaux 2 et 3 : mêmes planètes répulsives aux mêmes positions
         if (this.level >= 2) {
             const repulsivePlanets = [
@@ -215,7 +186,6 @@ class GameScene extends Phaser.Scene {
             ];
             repulsivePlanets.forEach(p => planets.push(p));
         }
-
         // Niveau 2 et 3 : planètes 3 et 6 ont une anti-gravité
         if (this.level >= 2) {
             if (planets[2]) planets[2].antigrav = true;
@@ -224,10 +194,7 @@ class GameScene extends Phaser.Scene {
 
         return planets;
     }
-
-    // ---
-    //  Positionner le joueur à la surface
-    // ---
+    // Positionner le joueur à la surface
     snapToPlanet(planetIndex, angle) {
         const data   = this.planetData[planetIndex];
         const offset = data.radius + 24;
@@ -235,12 +202,10 @@ class GameScene extends Phaser.Scene {
         this.player.x = data.x + Math.cos(angle) * offset;
         this.player.y = data.y + Math.sin(angle) * offset;
         this.player.body.setVelocity(0, 0);
-
         this.currentPlanetIndex = planetIndex;
         this.angle      = angle;
         this.isOnPlanet = true;
         this.isFlying   = false;
-
         this.jumpCharge = 0;
         this.isCharging = false;
         if (this.chargeBar) {
@@ -250,12 +215,8 @@ class GameScene extends Phaser.Scene {
             this.chargeBar.setSize(0, 14);
         }
     }
-
-    // ---
-    //  Création d'une planète
-    // ---
+    // Création d'une planète
     createPlanet(data, index) {
-
         // === ANNEAUX GRAVITATIONNELS ===
         if (data.type !== 'repulsive') {
             // Planète attractive : anneaux bleus qui RÉTRÉCISSENT vers la planète
@@ -265,7 +226,6 @@ class GameScene extends Phaser.Scene {
                 const ring  = this.add.circle(data.x, data.y, data.radius * factor, 0xffffff, 0);
                 ring.setStrokeStyle(1.5, 0xaaddff, alpha);
             });
-
             // Anneau pulsant qui se rétrécit vers le centre (attraction)
             const pulseRing = this.add.circle(data.x, data.y, data.radius * 4.5, 0xffffff, 0);
             pulseRing.setStrokeStyle(1, 0x88ccff, 0.4);
@@ -284,7 +244,6 @@ class GameScene extends Phaser.Scene {
                 const ring = this.add.circle(data.x, data.y, data.radius * factor, 0xff0000, 0);
                 ring.setStrokeStyle(1.5, 0xff4400, [0.25, 0.15, 0.07][i]);
             });
-
             // Anneau pulsant qui s'élargit vers l'extérieur (répulsion)
             const pulseRed = this.add.circle(data.x, data.y, data.radius * 2.0, 0xff0000, 0);
             pulseRed.setStrokeStyle(1.5, 0xff2200, 0.5);
@@ -295,16 +254,13 @@ class GameScene extends Phaser.Scene {
                 duration: 800, repeat: -1, ease: 'Sine.easeOut'
             });
         }
-
         // === IMAGE PLANÈTE ===
         const img = this.add.image(data.x, data.y, data.image);
         img.setDisplaySize(data.radius * 2, data.radius * 2);
-
         // Teinte rouge pour les répulsives
         if (data.type === 'repulsive') img.setTint(0xff3300);
         // Teinte verte pour les anti-grav normales (niveau 2)
         if (data.antigrav && data.type !== 'repulsive') img.setTint(0x88ff44);
-
         // === HITBOX carrée (pas sur les répulsives) ===
         if (data.type !== 'repulsive') {
             const body = this.physics.add.staticImage(data.x, data.y, '__DEFAULT');
@@ -314,7 +270,6 @@ class GameScene extends Phaser.Scene {
             body.refreshBody();
             this.planetBodies.add(body);
         }
-
         // === LABEL SAFE ===
         if (data.type === 'safe') {
             const label = this.level === 3 ? '★ SAFE' : '★ SAFE ?';
@@ -323,7 +278,6 @@ class GameScene extends Phaser.Scene {
                 fontSize: '20px', color, fontFamily: 'Arial Black'
             }).setOrigin(0.5);
         }
-
         // === DÉCORATIONS trump/epstein sur les répulsives ===
         if (data.type === 'repulsive') {
             if (this.level === 2) {
@@ -346,13 +300,9 @@ class GameScene extends Phaser.Scene {
 
         this.planetGraphics.push(img);
     }
-
-    // ---
-    //  UPDATE
-    // ---
+    // UPDATE
     update() {
         if (this.gameOver) return;
-
         if (this.isOnPlanet) {
             this.updateOnPlanet();
         } else if (this.isFlying) {
@@ -365,7 +315,6 @@ class GameScene extends Phaser.Scene {
 
         const elapsed = Math.floor((this.time.now - this.startTime) / 1000);
         this.timerText.setText('Temps : ' + elapsed + 's');
-
         this.updateFlyingObjects(this.game.loop.delta);
 
         if (this.player.y > 700 || this.player.y < -150 ||
@@ -373,10 +322,7 @@ class GameScene extends Phaser.Scene {
             this.onDeath();
         }
     }
-
-    // ---
-    //  Sur planète
-    // ---
+    // Sur planète
     updateOnPlanet() {
         const data       = this.planetData[this.currentPlanetIndex];
         const WALK_SPEED = 0.025;
@@ -402,21 +348,16 @@ class GameScene extends Phaser.Scene {
             if (this.jumpCharge === 0) this.jumpCharge = 0.05;
             this.chargeJump();
         }
-
         // Lancer dès que ESPACE est relâché, même si la charge est très faible
         if (Phaser.Input.Keyboard.JustUp(this.cursors.space) && this.jumpCharge > 0) {
             this.launchFromPlanet();
         }
     }
-
-    // ---
-    //  Charge saut
-    // ---
+    // Charge saut
     chargeJump() {
         const data = this.planetData[this.currentPlanetIndex];
         this.jumpCharge = Math.min(1, this.jumpCharge + 0.6 / data.radius);
         this.isCharging = true;
-
         this.chargeBarBg.setVisible(true);
         this.chargeBar.setVisible(true);
         this.chargeText.setVisible(true);
@@ -430,10 +371,7 @@ class GameScene extends Phaser.Scene {
         this.playerSprite.x = this.player.x + shake;
         this.playerSprite.y = this.player.y + shake;
     }
-
-    // ---
-    //  Lancement
-    // ---
+    // Lancement
     launchFromPlanet() {
         const data   = this.planetData[this.currentPlanetIndex];
         const charge = this.jumpCharge;
@@ -449,7 +387,6 @@ class GameScene extends Phaser.Scene {
         const radialY         = Math.sin(this.angle);
         const chargeEffective = Math.max(0.2, charge);
         const launchForce     = (300 + data.radius * 3.5) * chargeEffective;
-
         // Le joueur saute dans la direction où il se trouve sur la planète
         // (direction radiale = vers l'extérieur de la surface)
         const vx = radialX * launchForce;
@@ -462,13 +399,9 @@ class GameScene extends Phaser.Scene {
         this.playerSprite.anims.play('jump', true);
         this.time.delayedCall(400, () => { this.justLaunched = false; });
     }
-
-    // ---
-    //  En vol
-    // ---
+    // En vol
     updateFlying() {
         let closestIdx = -1, closestDist = Infinity;
-
         // Trouver la planète attractive la plus proche (exclure les répulsives)
         this.planetData.forEach((data, i) => {
             if (!this.planetAlive[i]) return;
@@ -487,11 +420,9 @@ class GameScene extends Phaser.Scene {
         const dist   = Math.sqrt(dx * dx + dy * dy);
         const delta  = this.game.loop.delta / 1000;
         const force  = Phaser.Math.Clamp(this.G * target.radius / (dist * dist), 0, 900);
-
         // Attraction normale vers la planète la plus proche
         this.player.body.setVelocityX(this.player.body.velocity.x + (dx / dist) * force * delta);
         this.player.body.setVelocityY(this.player.body.velocity.y + (dy / dist) * force * delta);
-
         // === RÉPULSION des planètes répulsives (type: 'repulsive') ===
         this.planetData.forEach((data, i) => {
             if (!this.planetAlive[i] || data.type !== 'repulsive') return;
@@ -506,7 +437,6 @@ class GameScene extends Phaser.Scene {
                 this.player.body.setVelocityY(this.player.body.velocity.y + (rdy / rdist) * repForce * delta);
             }
         });
-
         // === ANTI-GRAVITÉ des planètes normales (antigrav: true, niveau 2) ===
         this.planetData.forEach((data, i) => {
             if (!this.planetAlive[i] || !data.antigrav || data.type === 'repulsive') return;
@@ -525,13 +455,9 @@ class GameScene extends Phaser.Scene {
         const vx = this.player.body.velocity.x;
         const vy = this.player.body.velocity.y;
         this.player.rotation = Math.atan2(vy, vx) + Math.PI / 2;
-
         // L'atterrissage est détecté par le overlap() Phaser (hitboxes carrées)
     }
-
-    // ---
-    //  Atterrissage
-    // ---
+    // Atterrissage
     onLanding(planetIndex) {
         const data = this.planetData[planetIndex];
         this.playerSprite.anims.play('idle', true);
@@ -544,19 +470,14 @@ class GameScene extends Phaser.Scene {
             }
             return;
         }
-
         // Désintégration + pluie de météorites
         this.startPlanetDestruction(planetIndex);
         this.startMeteorShower(planetIndex);
     }
-
-    // ---
-    //  Pluie de météorites sur la planète courante
-    // ---
+    // Pluie de météorites sur la planète courante
     startMeteorShower(planetIndex) {
         const data  = this.planetData[planetIndex];
         const delay = this.levelConfig.meteorDelay;
-
         const meteorTimer = this.time.addEvent({
             delay: delay,
             loop: true,
@@ -566,21 +487,17 @@ class GameScene extends Phaser.Scene {
                     meteorTimer.remove();
                     return;
                 }
-
                 // Point d'impact aléatoire autour de la planète
                 const offsetX = Phaser.Math.Between(-data.radius * 2, data.radius * 2);
                 const startX  = data.x + offsetX;
                 const startY  = data.y - 380;
-
                 // Corps de la météorite
                 const meteor = this.add.circle(startX, startY, Phaser.Math.Between(5, 12), 0xff6622, 1).setDepth(15);
-
                 // Traîne
                 const trail = [];
                 for (let i = 0; i < 5; i++) {
                     trail.push(this.add.circle(startX, startY, (5 - i) * 1.5, 0xff4400, 0.5 - i * 0.08).setDepth(14));
                 }
-
                 // Chute vers la planète
                 this.tweens.add({
                     targets: meteor,
@@ -624,7 +541,6 @@ class GameScene extends Phaser.Scene {
 
         const data = this.planetData[planetIndex];
         const gfx  = this.planetGraphics[planetIndex];
-
         // La planète vire au violet puis devient noire et grossit
         // On crée un cercle noir qui recouvre progressivement la planète
         const blackCircle = this.add.circle(data.x, data.y, data.radius, 0x000000, 0);
@@ -660,7 +576,6 @@ class GameScene extends Phaser.Scene {
                 gfx.setTint(0x000000);
             }
         });
-
         // === CERCLES VIOLETS qui s'élargissent ===
         const spawnRings = () => {
             [1.5, 2.5, 4.0].forEach((factor, i) => {
@@ -681,7 +596,6 @@ class GameScene extends Phaser.Scene {
         this.time.delayedCall(400,  spawnRings);
         this.time.delayedCall(800,  spawnRings);
         this.time.delayedCall(1200, spawnRings);
-
         // Le joueur est aspiré et disparaît progressivement
         this.tweens.add({
             targets: [this.player, this.playerSprite],
@@ -706,7 +620,6 @@ class GameScene extends Phaser.Scene {
                 }
             }
         });
-
         // Fondu violet puis noir → niveau suivant
         this.time.delayedCall(1600, () => {
             spawnRings();
@@ -728,10 +641,7 @@ class GameScene extends Phaser.Scene {
             });
         });
     }
-
-    // ---
-    //  Désintégration planète
-    // ---
+    // Désintégration planète
     startPlanetDestruction(planetIndex) {
         const data = this.planetData[planetIndex];
         const gfx  = this.planetGraphics[planetIndex];
@@ -744,7 +654,6 @@ class GameScene extends Phaser.Scene {
             { fontSize: '14px', color: '#ffaa00', fontFamily: 'Arial Black' }
         ).setOrigin(0.5).setDepth(15);
         this.time.delayedCall(totalTime, () => { if (alert.active) alert.destroy(); });
-
         this.time.addEvent({
             delay: totalTime / steps,
             repeat: steps - 1,
@@ -794,10 +703,7 @@ class GameScene extends Phaser.Scene {
             }
         });
     }
-
-    // ---
-    //  Victoire (niveau 3)
-    // ---
+    // Victoire (niveau 3)
     onVictory() {
         this.gameOver = true;
         const elapsed = Math.floor((this.time.now - this.startTime) / 1000);
@@ -805,10 +711,7 @@ class GameScene extends Phaser.Scene {
             this.scene.start('WinScene', { time: elapsed });
         });
     }
-
-    // ---
-    //  Mort
-    // ---
+    // Mort
     onDeath() {
         if (this.gameOver) return;
         this.gameOver = true;
@@ -817,17 +720,12 @@ class GameScene extends Phaser.Scene {
             this.scene.start('GameScene', { level: this.level });
         });
     }
-
-    // ---
-    //  Spawn comète/météorite
-    // ---
+    // Spawn comète/météorite
     spawnFlyingObject() {
         if (this.gameOver) return;
-
         const camX = this.cameras.main.scrollX;
         const camW = this.scale.width;
         const camH = this.scale.height;
-
         const isComet = Math.random() < 0.5;
         const config  = isComet ? {
             radius: Phaser.Math.Between(6, 12),  speed: Phaser.Math.Between(280, 450),
@@ -867,10 +765,7 @@ class GameScene extends Phaser.Scene {
 
         this.flyingObjects.push({ x: spawnX, y: spawnY, vx: velX, vy: velY, radius: config.radius, mass: config.mass, body, tail, gravRing, isComet, age: 0, maxAge: 8000 });
     }
-
-    // ---
-    //  Mise à jour comètes
-    // ---
+    // Mise à jour comètes
     updateFlyingObjects(delta) {
         const toRemove = [];
 
@@ -916,15 +811,11 @@ class GameScene extends Phaser.Scene {
             this.flyingObjects.splice(idx, 1);
         });
     }
-
-    // ---
-    //  Bannière de niveau
-    // ---
+    // Bannière de niveau
     showLevelBanner() {
         const { width, height } = this.scale;
         const labels = { 1: 'NIVEAU 1', 2: 'NIVEAU 2', 3: 'NIVEAU FINAL' };
         const colors = { 1: '#44aaff', 2: '#ffaa44', 3: '#ff4444' };
-
         const banner = this.add.text(width / 2, height / 2,
             labels[this.level],
             { fontSize: '56px', fontFamily: 'Arial Black', color: colors[this.level] }
@@ -936,23 +827,14 @@ class GameScene extends Phaser.Scene {
             onComplete: () => banner.destroy()
         });
     }
-
-    // ---
-    //  Fond étoilé
-    // ---
-    createStarBackground(w, h) {
-        const count = this.level === 3 ? 600 : 400;
-        for (let i = 0; i < count; i++) {
-            this.add.circle(
-                Phaser.Math.Between(0, w), Phaser.Math.Between(0, h),
-                Phaser.Math.FloatBetween(0.5, 2.5), 0xffffff, Phaser.Math.FloatBetween(0.2, 0.9)
-            );
-        }
+    // Fond étoilé via Tiled
+    createTiledBackground() {
+        const map     = this.make.tilemap({ key: 'space_map' });
+        const tileset = map.addTilesetImage('space_tileset', 'space_tileset');
+        const layer   = map.createLayer('fond_etoile', tileset, 0, 0);
+        layer.setDepth(-1);
     }
-
-    // ---
-    //  UI
-    // ---
+    // UI
     createUI() {
         const levelColors = { 1: '#44aaff', 2: '#ffaa44', 3: '#ff4444' };
         this.add.text(20, 20, `Niveau ${this.level}`, {
