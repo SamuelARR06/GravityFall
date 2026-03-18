@@ -31,9 +31,11 @@ class GameScene extends Phaser.Scene {
         this.physics.world.setBounds(0, 0, W, 720);
         this.cameras.main.setBounds(0, 0, W, 720);
         this.physics.world.gravity.set(0, 0);
+
         // darties.fr — Tiled : fond étoilé
         const map = this.make.tilemap({ key: 'space_map' });
         map.createLayer('fond_etoile', map.addTilesetImage('space_tileset', 'space_tileset'), 0, 0).setDepth(-1);
+
         // darties.fr — tweens : bannière de niveau
         this.showLevelBanner();
         this.levelConfig = {
@@ -44,14 +46,17 @@ class GameScene extends Phaser.Scene {
         this.planetData     = this.buildPlanetData();
         this.planetGraphics = [];
         this.planetAlive    = [];
+
         // darties.fr — collisions : staticGroup pour les hitboxes des planètes
         this.planetBodies = this.physics.add.staticGroup();
         this.planetData.forEach((data, i) => { this.createPlanet(data, i); this.planetAlive.push(true); });
+
         // darties.fr — bases Phaser : créer le joueur avec physics.add.image
         const start = this.planetData[0];
         this.player = this.physics.add.image(start.x, start.y - start.radius - 30, '__DEFAULT');
         this.player.setDisplaySize(36, 46).setDepth(10);
         this.player.body.setAllowGravity(false);
+        
         // darties.fr — animations : sprite et spritesheet
         this.playerSprite = this.add.sprite(this.player.x, this.player.y, 'player').setDisplaySize(48, 60).setDepth(11);
         if (!this.anims.exists('idle')) {
