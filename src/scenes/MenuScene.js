@@ -26,13 +26,21 @@ class MenuScene extends Phaser.Scene {
             fontSize: '24px', fontFamily: 'Arial', color: '#ffffff'
         }).setOrigin(0.5);
 
-        // darties.fr — tweens : clignotement du texte
+        // darties.fr — tweens : clignotement du texte blanc
         this.tweens.add({ targets: startText, alpha: 0, duration: 800, yoyo: true, repeat: -1 });
 
         this.add.text(width / 2, height * 0.80,
             'ESPACE ou CLIC pour sauter entre les planètes\nSurvie avant que tout s\'effondre !', {
             fontSize: '16px', fontFamily: 'Arial', color: '#888888', align: 'center'
         }).setOrigin(0.5);
+
+        const redText = this.add.text(width / 2, height * 0.55,
+            'Dépeche toi de rejoindre le vaisseau afin de découvrire le mysterieux secret entre Trump et son ami Epstein', {
+            fontSize: '25px', fontFamily: 'Arial', color: '#ff0000', align: 'center'
+        }).setOrigin(0.5);
+
+        // darties.fr — tweens : clignotement de la phrase rouge
+        this.tweens.add({ targets: redText, alpha: 0, duration: 500, yoyo: true, repeat: -1 });
 
         // darties.fr — bases Phaser : écouter la touche ESPACE
         this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE).once('down', () => {

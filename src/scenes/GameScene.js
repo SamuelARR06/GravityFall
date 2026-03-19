@@ -1,8 +1,3 @@
-// ============================================================
-//  GameScene.js — Scène principale du jeu (3 niveaux)
-//  C'est ici que tout se passe : les planètes, le joueur,
-//  la gravité, les collisions, le chronomètre...
-// ============================================================
 class GameScene extends Phaser.Scene {
     constructor() {
         // On donne un nom à cette scène pour pouvoir y accéder depuis les autres
@@ -12,21 +7,20 @@ class GameScene extends Phaser.Scene {
     init(data) {
         // init() est appelé en premier, avant preload()
         // data contient ce qu'on a passé dans scene.start('GameScene', { level: 1 })
-        // darties.fr — multi-niveaux : on reçoit le niveau via scene.start()
         this.level = data.level || 1; // si rien n'est passé, on démarre au niveau 1
     }
 
     preload() {
         // preload() charge tous les fichiers dont on a besoin AVANT de lancer le jeu
-        // darties.fr — bases Phaser : chargement des assets dans preload()
-
-        // Spritesheet du joueur : une grande image avec toutes les frames d'animation
         this.load.spritesheet('player', 'assets/darties.png', { frameWidth: 204, frameHeight: 256 });
 
-        // On charge toutes les images de planètes en une seule boucle
-        ['planet_alien','planet_crystal','planet_desert','planet_earth','planet_fire',
+        // On charge toutes les images de planètes avec une boucle for classique
+        const planetNames = ['planet_alien','planet_crystal','planet_desert','planet_earth','planet_fire',
          'planet_forest','planet_ice','planet_jupiter','planet_lava','planet_mars',
-         'planet_moon','planet_saturn','planet_snow'].forEach(n => this.load.image(n, `assets/planetes/${n}.png`));
+         'planet_moon','planet_saturn','planet_snow'];
+        for (let i = 0; i < planetNames.length; i++) {
+            this.load.image(planetNames[i], 'assets/planetes/' + planetNames[i] + '.png');
+        }
 
         // Images des personnages posés sur les planètes répulsives
         this.load.image('trump', 'assets/trump.png');
@@ -35,7 +29,7 @@ class GameScene extends Phaser.Scene {
         // Image du vaisseau (planète finale du niveau 3)
         this.load.image('ship', 'assets/ship.png');
 
-        // darties.fr — Tiled : chargement de la carte et du tileset pour le fond étoilé
+        // chargement de la carte Tiled (fond étoilé) et de son tileset
         this.load.tilemapTiledJSON('space_map', 'assets/space_map.json');
         this.load.image('space_tileset', 'assets/space_tileset.png');
 
@@ -47,26 +41,29 @@ class GameScene extends Phaser.Scene {
         // create() est appelé une fois quand la scène démarre
         // C'est ici qu'on crée tous les objets du jeu
 
-        // Taille du monde différente selon le niveau (plus grand = plus de planètes)
-        const W = this.level === 1 ? 4500 : this.level === 2 ? 5800 : 7500;
+        // Taille du monde différente selon le niveau (plus grand = plus de planètes); W = largeur du monde
+        let W;
+        if (this.level === 1) { W = 4500; }
+        else if (this.level === 2) { W = 5800; }
+        else { W = 7500; }
 
-        // darties.fr — bases Phaser : limites du monde physique et de la caméra
+        //  limites du monde physique et de la caméra
         this.physics.world.setBounds(0, 0, W, 720); // le monde physique s'arrête ici
         this.cameras.main.setBounds(0, 0, W, 720);  // la caméra ne sort pas du monde
-        this.physics.world.gravity.set(0, 0);        // on désactive la gravité de Phaser (on fait la nôtre)
+        this.physics.world.gravity.set(0, 0);        // on désactive la gravité de Phaser 
 
-        // darties.fr — Tiled : on crée le fond étoilé à partir de la carte Tiled
+        //on crée le fond étoilé à partir de la carte Tiled
         const map = this.make.tilemap({ key: 'space_map' });
         map.createLayer('fond_etoile', map.addTilesetImage('space_tileset', 'space_tileset'), 0, 0).setDepth(-1);
 
-        // darties.fr — tweens : bannière "NIVEAU 1 / 2 / FINAL" au démarrage
+        // bannière "NIVEAU 1 / 2 / FINAL" au démarrage
         this.showLevelBanner();
 
-        // Configuration des délais selon le niveau (plus élevé = plus difficile)
+        // Configuration des délais selon le niveau 
         this.levelConfig = {
-            1: { cometDelay: 9000 },
-            2: { cometDelay: 6000 },
-            3: { cometDelay: 3000 },
+            1: { cometDelay: 90 },
+            2: { cometDelay: 110 },
+            3: { cometDelay: 150 },
         }[this.level];
 
         // On construit la liste des planètes pour ce niveau
@@ -74,7 +71,7 @@ class GameScene extends Phaser.Scene {
         this.planetGraphics = []; // stocke les images des planètes (pour les animer)
         this.planetAlive    = []; // true/false : la planète existe encore ?
 
-        // darties.fr — collisions : staticGroup contient toutes les hitboxes des planètes
+        // collisions : staticGroup contient toutes les hitboxes des planètes
         // "static" = immobile, pas affectée par la physique
         this.planetBodies = this.physics.add.staticGroup();
         this.planetData.forEach((data, i) => {
@@ -82,18 +79,18 @@ class GameScene extends Phaser.Scene {
             this.planetAlive.push(true); // au départ toutes les planètes sont vivantes
         });
 
-        // darties.fr — bases Phaser : créer le joueur avec physics.add.image
+        // créer le joueur avec physics.add.image
         // physics.add.image = objet avec une hitbox physique
         const start = this.planetData[0]; // on commence sur la première planète
         this.player = this.physics.add.image(start.x, start.y - start.radius - 30, '__DEFAULT');
         this.player.setDisplaySize(36, 46).setDepth(10); // taille visuelle + profondeur
         this.player.body.setAllowGravity(false); // le joueur n'est pas affecté par la gravité Phaser
 
-        // darties.fr — animations : on crée un sprite séparé pour afficher les animations
+        // animations : on crée un sprite séparé pour afficher les animations
         // (le "player" est juste la hitbox, "playerSprite" c'est ce qu'on voit)
         this.playerSprite = this.add.sprite(this.player.x, this.player.y, 'player').setDisplaySize(48, 60).setDepth(11);
 
-        // darties.fr — animations : on définit les animations depuis la spritesheet
+        // animations : on définit les animations depuis la spritesheet
         // chaque animation = une liste de frames dans l'image darties.png
         if (!this.anims.exists('idle')) {
             this.anims.create({ key: 'idle',       frames: [{ key: 'player', frame: 0 }], frameRate: 1,  repeat: 0  });
@@ -109,13 +106,13 @@ class GameScene extends Phaser.Scene {
         this.isOnPlanet = true;      // true = posé sur une planète
         this.isFlying   = false;     // true = en train de voler entre les planètes
         this.gameOver   = false;     // true = le jeu est terminé (mort ou victoire)
-        this.G          = 28000;     // constante de gravité (plus grand = plus fort)
+        this.G          = 40000;     // constante de gravité (plus grand = plus fort)
         this.blackHoleActive = false;// true = animation trou noir en cours
 
-        // darties.fr — bases Phaser : createCursorKeys() gère les touches directionnelles + espace
+        // bases Phaser : createCursorKeys() gère les touches directionnelles + espace
         this.cursors = this.input.keyboard.createCursorKeys();
 
-        // darties.fr — collisions : overlap() détecte quand le joueur touche une planète
+        // collisions : overlap() détecte quand le joueur touche une planète
         // Contrairement à collider(), overlap ne fait pas rebondir — il appelle juste une fonction
         this.physics.add.overlap(this.player, this.planetBodies, (player, planetBody) => {
             if (!this.isFlying || this.justLaunched) return; // on ignore si on vient de sauter
@@ -125,10 +122,10 @@ class GameScene extends Phaser.Scene {
             this.onLanding(idx); // déclenche l'atterrissage
         }, null, this);
 
-        // darties.fr — bases Phaser : la caméra suit le joueur avec un léger délai (0.08)
+        // bases Phaser : la caméra suit le joueur avec un léger délai (0.08)
         this.cameras.main.startFollow(this.player, true, 0.08, 0.08);
 
-        // darties.fr — chronomètre : textes du HUD, setScrollFactor(0) = collé à l'écran
+        // chronomètre : textes du HUD, setScrollFactor(0) = collé à l'écran
         const c = { 1:'#44aaff', 2:'#ffaa44', 3:'#ff4444' }[this.level];
         this.add.text(20, 20, `Niveau ${this.level}`, { fontSize: '16px', fontFamily: 'Arial Black', color: c }).setScrollFactor(0).setDepth(100);
         this.timerText = this.add.text(20, 42, 'Temps : 0s', { fontSize: '16px', color: '#ffffff' }).setScrollFactor(0).setDepth(100);
