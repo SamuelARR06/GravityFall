@@ -16,7 +16,7 @@ class WinScene extends Phaser.Scene {
         this.add.image(width / 2, height / 2, 'win_bg').setDisplaySize(width, height);
 
         this.add.text(width / 2, height * 0.25, 'VOUS AVEZ Découvert que Trump et Epstein sont les meilleurs amis!', {
-            fontSize: '56px', fontFamily: 'Arial Black',
+            fontSize: '30px', fontFamily: 'Arial Black',
             color: '#44ff88', stroke: '#006633', strokeThickness: 5
         }).setOrigin(0.5);
 
