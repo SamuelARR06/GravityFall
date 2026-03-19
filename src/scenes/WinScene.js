@@ -6,13 +6,13 @@ class WinScene extends Phaser.Scene {
         this.finalTime = data.time || 0;
     }
     preload() {
-        // darties.fr — bases Phaser : chargement de l'image de fond
+        // bases Phaser : chargement de l'image de fond
         this.load.image('win_bg', 'assets/win.jpeg');
     }
     create() {
         const { width, height } = this.scale;
 
-        // darties.fr — bases Phaser : image de fond
+        // image de fond
         this.add.image(width / 2, height / 2, 'win_bg').setDisplaySize(width, height);
 
         this.add.text(width / 2, height * 0.25, 'VOUS AVEZ Découvert que Trump et Epstein sont les meilleurs amis!', {
@@ -28,7 +28,7 @@ class WinScene extends Phaser.Scene {
             fontSize: '22px', fontFamily: 'Arial', color: '#aaaaff'
         }).setOrigin(0.5);
 
-        // darties.fr — tweens : clignotement
+        // clignotement
         this.tweens.add({ targets: replayText, alpha: 0, duration: 700, yoyo: true, repeat: -1 });
 
         this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE).once('down', () => this.scene.start('MenuScene'));

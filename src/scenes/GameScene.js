@@ -41,30 +41,28 @@ class GameScene extends Phaser.Scene {
         // create() est appelé une fois quand la scène démarre
         // C'est ici qu'on crée tous les objets du jeu
 
-        // Taille du monde différente selon le niveau (plus grand = plus de planètes); W = largeur du monde
+        // Taille du monde différente selon le niveau (plus grand = plus de planètes)
         let W;
         if (this.level === 1) { W = 4500; }
         else if (this.level === 2) { W = 5800; }
         else { W = 7500; }
 
-        //  limites du monde physique et de la caméra
+        // limites du monde physique et de la caméra
         this.physics.world.setBounds(0, 0, W, 720); // le monde physique s'arrête ici
         this.cameras.main.setBounds(0, 0, W, 720);  // la caméra ne sort pas du monde
-        this.physics.world.gravity.set(0, 0);        // on désactive la gravité de Phaser 
+        this.physics.world.gravity.set(0, 0);        // on désactive la gravité de Phaser
 
-        //on crée le fond étoilé à partir de la carte Tiled
+        // on crée le fond étoilé à partir de la carte Tiled
         const map = this.make.tilemap({ key: 'space_map' });
         map.createLayer('fond_etoile', map.addTilesetImage('space_tileset', 'space_tileset'), 0, 0).setDepth(-1);
 
         // bannière "NIVEAU 1 / 2 / FINAL" au démarrage
         this.showLevelBanner();
 
-        // Configuration des délais selon le niveau 
-        this.levelConfig = {
-            1: { cometDelay: 90 },
-            2: { cometDelay: 110 },
-            3: { cometDelay: 150 },
-        }[this.level];
+        // Configuration des délais selon le niveau
+        if (this.level === 1) { this.levelConfig = { cometDelay: 90 }; }
+        else if (this.level === 2) { this.levelConfig = { cometDelay: 110 }; }
+        else { this.levelConfig = { cometDelay: 150 }; }
 
         // On construit la liste des planètes pour ce niveau
         this.planetData     = this.buildPlanetData();
@@ -74,10 +72,10 @@ class GameScene extends Phaser.Scene {
         // collisions : staticGroup contient toutes les hitboxes des planètes
         // "static" = immobile, pas affectée par la physique
         this.planetBodies = this.physics.add.staticGroup();
-        this.planetData.forEach((data, i) => {
-            this.createPlanet(data, i);  // crée visuellement chaque planète
-            this.planetAlive.push(true); // au départ toutes les planètes sont vivantes
-        });
+        for (let i = 0; i < this.planetData.length; i++) {
+            this.createPlanet(this.planetData[i], i); // crée visuellement chaque planète
+            this.planetAlive.push(true);              // au départ toutes les planètes sont vivantes
+        }
 
         // créer le joueur avec physics.add.image
         // physics.add.image = objet avec une hitbox physique
@@ -109,7 +107,7 @@ class GameScene extends Phaser.Scene {
         this.G          = 40000;     // constante de gravité (plus grand = plus fort)
         this.blackHoleActive = false;// true = animation trou noir en cours
 
-        // bases Phaser : createCursorKeys() gère les touches directionnelles + espace
+        // createCursorKeys() gère les touches directionnelles + espace
         this.cursors = this.input.keyboard.createCursorKeys();
 
         // collisions : overlap() détecte quand le joueur touche une planète
@@ -118,16 +116,20 @@ class GameScene extends Phaser.Scene {
             if (!this.isFlying || this.justLaunched) return; // on ignore si on vient de sauter
             const idx = planetBody.planetIndex;
             if (!this.planetAlive[idx]) return; // on ignore si la planète est détruite
-            this.snapToPlanet(idx, Math.atan2(this.player.y - this.planetData[idx].y, this.player.x - this.planetData[idx].x));
+            const landAngle = Math.atan2(this.player.y - this.planetData[idx].y, this.player.x - this.planetData[idx].x);
+            this.snapToPlanet(idx, landAngle);
             this.onLanding(idx); // déclenche l'atterrissage
         }, null, this);
 
-        // bases Phaser : la caméra suit le joueur avec un léger délai (0.08)
+        // la caméra suit le joueur avec un léger délai (0.08)
         this.cameras.main.startFollow(this.player, true, 0.08, 0.08);
 
         // chronomètre : textes du HUD, setScrollFactor(0) = collé à l'écran
-        const c = { 1:'#44aaff', 2:'#ffaa44', 3:'#ff4444' }[this.level];
-        this.add.text(20, 20, `Niveau ${this.level}`, { fontSize: '16px', fontFamily: 'Arial Black', color: c }).setScrollFactor(0).setDepth(100);
+        let couleurNiveau;
+        if (this.level === 1) { couleurNiveau = '#44aaff'; }
+        else if (this.level === 2) { couleurNiveau = '#ffaa44'; }
+        else { couleurNiveau = '#ff4444'; }
+        this.add.text(20, 20, 'Niveau ' + this.level, { fontSize: '16px', fontFamily: 'Arial Black', color: couleurNiveau }).setScrollFactor(0).setDepth(100);
         this.timerText = this.add.text(20, 42, 'Temps : 0s', { fontSize: '16px', color: '#ffffff' }).setScrollFactor(0).setDepth(100);
         this.startTime = this.time.now; // on mémorise l'heure de départ pour le chrono
 
@@ -152,7 +154,7 @@ class GameScene extends Phaser.Scene {
         // Cette fonction construit la liste de toutes les planètes du niveau
         // Chaque planète est un objet avec sa position, son rayon, son image...
 
-        // Liste de toutes les planètes disponibles (on en prend un sous-ensemble selon le niveau)
+        // Liste de toutes les planètes disponibles
         const all = [
             { x: 300,  y: 370, radius: 90, image: 'planet_jupiter', debrisColor: 0xffaa44 },
             { x: 650,  y: 310, radius: 38, image: 'planet_moon',    debrisColor: 0xcccccc },
@@ -169,34 +171,47 @@ class GameScene extends Phaser.Scene {
         ];
 
         // On prend 5, 7 ou 10 planètes selon le niveau
-        const planets = all.slice(0, { 1:5, 2:7, 3:10 }[this.level]);
+        let nbPlanetes;
+        if (this.level === 1) { nbPlanetes = 5; }
+        else if (this.level === 2) { nbPlanetes = 7; }
+        else { nbPlanetes = 10; }
+
+        const planets = [];
+        for (let i = 0; i < nbPlanetes; i++) {
+            planets.push(all[i]);
+        }
 
         // La planète "safe" est placée après la dernière planète normale
         const safeX = planets[planets.length - 1].x + Phaser.Math.Between(550, 700);
 
-        // darties.fr — multi-niveaux : au niveau 3 c'est un vaisseau, sinon une planète normale
-        planets.push(this.level === 3
-            ? { x: safeX, y: 355, radius: 80,  image: 'ship',         debrisColor: 0xaaddff, type: 'safe' }
-            : { x: safeX, y: 355, radius: 100, image: 'planet_earth', debrisColor: 0x44aaff, type: 'safe' }
-        );
+        // au niveau 3 c'est un vaisseau, sinon une planète normale
+        if (this.level === 3) {
+            planets.push({ x: safeX, y: 355, radius: 80,  image: 'ship',         debrisColor: 0xaaddff, type: 'safe' });
+        } else {
+            planets.push({ x: safeX, y: 355, radius: 100, image: 'planet_earth', debrisColor: 0x44aaff, type: 'safe' });
+        }
 
         // On assigne un type à chaque planète : 'start', 'normal' ou 'safe'
-        planets.forEach((p, i) => { if (!p.type) p.type = i === 0 ? 'start' : 'normal'; });
+        for (let i = 0; i < planets.length; i++) {
+            if (!planets[i].type) {
+                if (i === 0) { planets[i].type = 'start'; }
+                else { planets[i].type = 'normal'; }
+            }
+        }
 
         // Planètes répulsives : elles repoussent le joueur au lieu de l'attirer (niveaux 2 et 3)
         if (this.level >= 2) {
-            [
-                { x: 820,  y: 500, radius: 22, image: 'planet_lava', debrisColor: 0xff5500, type: 'repulsive' },
-                { x: 1420, y: 150, radius: 20, image: 'planet_lava', debrisColor: 0xff5500, type: 'repulsive' },
-                { x: 2300, y: 530, radius: 25, image: 'planet_lava', debrisColor: 0xff5500, type: 'repulsive' },
-                { x: 3050, y: 480, radius: 22, image: 'planet_lava', debrisColor: 0xff5500, type: 'repulsive' },
-            ].forEach(p => planets.push(p));
+            planets.push({ x: 820,  y: 500, radius: 22, image: 'planet_lava', debrisColor: 0xff5500, type: 'repulsive' });
+            planets.push({ x: 1420, y: 150, radius: 20, image: 'planet_lava', debrisColor: 0xff5500, type: 'repulsive' });
+            planets.push({ x: 2300, y: 530, radius: 25, image: 'planet_lava', debrisColor: 0xff5500, type: 'repulsive' });
+            planets.push({ x: 3050, y: 480, radius: 22, image: 'planet_lava', debrisColor: 0xff5500, type: 'repulsive' });
         }
+
         return planets;
     }
 
     snapToPlanet(planetIndex, angle) {
-        // Place le joueur sur le dessus de la planète
+        // Place le joueur à la surface de la planète
         // C'est appelé au démarrage et à chaque atterrissage
         const data = this.planetData[planetIndex];
         this.player.x = data.x + Math.cos(angle) * (data.radius + 24); // position sur la surface
@@ -219,17 +234,28 @@ class GameScene extends Phaser.Scene {
     createPlanet(data, index) {
         // Crée l'affichage d'une planète + sa hitbox
 
-        // darties.fr — tweens : anneau pulsant autour de la planète
-        // Pour les répulsives l'anneau s'agrandit (répulsion), pour les autres il rétrécit (attraction)
+        // anneau pulsant autour de la planète
+        // Pour les répulsives l'anneau s'agrandit, pour les autres il rétrécit
         const pulseRing = this.add.circle(data.x, data.y, data.radius * 2.2, 0xffffff, 0);
-        pulseRing.setStrokeStyle(1, data.type === 'repulsive' ? 0xff4400 : 0x88ccff, 0.4);
-        this.tweens.add({ targets: pulseRing, scaleX: data.type === 'repulsive' ? 2.5 : 0.5, scaleY: data.type === 'repulsive' ? 2.5 : 0.5, alpha: 0, duration: 1000, repeat: -1, ease: 'Sine.easeOut' });
+        let couleurAnneau;
+        let tailleAnneau;
+        if (data.type === 'repulsive') {
+            couleurAnneau = 0xff4400;
+            tailleAnneau = 2.5;
+        } else {
+            couleurAnneau = 0x88ccff;
+            tailleAnneau = 0.5;
+        }
+        pulseRing.setStrokeStyle(1, couleurAnneau, 0.4);
+        this.tweens.add({ targets: pulseRing, scaleX: tailleAnneau, scaleY: tailleAnneau, alpha: 0, duration: 1000, repeat: -1, ease: 'Sine.easeOut' });
 
-        // darties.fr — bases Phaser : add.image affiche l'image de la planète
+        // add.image affiche l'image de la planète
         const img = this.add.image(data.x, data.y, data.image).setDisplaySize(data.radius * 2, data.radius * 2);
-        if (data.type === 'repulsive') img.setTint(0xff3300); // les répulsives sont teintées en rouge
+        if (data.type === 'repulsive') {
+            img.setTint(0xff3300); // les répulsives sont teintées en rouge
+        }
 
-        // darties.fr — collisions : staticImage invisible = hitbox de la planète
+        // staticImage invisible = hitbox de la planète
         // On ne met pas de hitbox sur les répulsives car on ne peut pas y atterrir
         if (data.type !== 'repulsive') {
             const body = this.physics.add.staticImage(data.x, data.y, '__DEFAULT');
@@ -241,7 +267,12 @@ class GameScene extends Phaser.Scene {
 
         // On pose trump ou epstein sur les planètes répulsives selon le niveau
         if (data.type === 'repulsive' && this.level >= 2) {
-            const key = this.level === 3 && index % 2 !== 0 ? 'epstein' : 'trump';
+            let key;
+            if (this.level === 3 && index % 2 !== 0) {
+                key = 'epstein';
+            } else {
+                key = 'trump';
+            }
             const deco = this.add.image(data.x, data.y - data.radius - 5, key);
             deco.setDisplaySize(60, 75).setDepth(20).setOrigin(0.5, 1);
         }
@@ -252,34 +283,44 @@ class GameScene extends Phaser.Scene {
     update() {
         // update() est appelé automatiquement à chaque frame (environ 60 fois par seconde)
         // C'est ici qu'on gère tout ce qui bouge en temps réel
-
-        // darties.fr — bases Phaser : boucle update() appelée chaque frame
         if (this.gameOver) return; // si le jeu est fini, on ne fait rien
 
         // On appelle la bonne fonction selon l'état du joueur
-        if (this.isOnPlanet)    this.updateOnPlanet(); // le joueur est posé sur une planète
-        else if (this.isFlying) this.updateFlying();   // le joueur est en vol
+        if (this.isOnPlanet) {
+            this.updateOnPlanet(); // le joueur est posé sur une planète
+        } else if (this.isFlying) {
+            this.updateFlying();   // le joueur est en vol
+        }
 
         // Le sprite suit la hitbox du joueur (position + rotation)
         this.playerSprite.x = this.player.x;
         this.playerSprite.y = this.player.y;
         this.playerSprite.rotation = this.player.rotation;
 
-        // darties.fr — chronomètre : on calcule le temps écoulé et on met à jour le texte
-        this.timerText.setText('Temps : ' + Math.floor((this.time.now - this.startTime) / 1000) + 's');
+        // chronomètre : on calcule le temps écoulé et on met à jour le texte
+        const elapsed = Math.floor((this.time.now - this.startTime) / 1000);
+        this.timerText.setText('Temps : ' + elapsed + 's');
 
-        // darties.fr — borne du monde : si le joueur sort de la map → mort
-        if (this.player.y > 700 || this.player.y < -150 || this.player.x < -100 || this.player.x > 8000) this.onDeath();
+        // si le joueur sort de la map → mort
+        if (this.player.y > 700 || this.player.y < -150 || this.player.x < -100 || this.player.x > 8000) {
+            this.onDeath();
+        }
     }
 
     updateOnPlanet() {
         // Gère le déplacement du joueur quand il est posé sur une planète
         const data = this.planetData[this.currentPlanetIndex];
 
-        // darties.fr — bases Phaser : on lit les touches directionnelles
-        if (this.cursors.right.isDown) { this.angle += 0.025; this.playerSprite.anims.play('walk-right', true); }
-        else if (this.cursors.left.isDown) { this.angle -= 0.025; this.playerSprite.anims.play('walk-left', true); }
-        else { this.playerSprite.anims.play('idle', true); }
+        // on lit les touches directionnelles
+        if (this.cursors.right.isDown) {
+            this.angle += 0.025;
+            this.playerSprite.anims.play('walk-right', true);
+        } else if (this.cursors.left.isDown) {
+            this.angle -= 0.025;
+            this.playerSprite.anims.play('walk-left', true);
+        } else {
+            this.playerSprite.anims.play('idle', true);
+        }
 
         // Marche circulaire : on convertit l'angle en coordonnées x/y (cos/sin)
         // Le joueur tourne autour du centre de la planète
@@ -290,27 +331,39 @@ class GameScene extends Phaser.Scene {
 
         // Gestion du saut chargé : on maintient ESPACE pour charger
         if (this.cursors.space.isDown) {
-            if (this.jumpCharge === 0) this.jumpCharge = 0.05;
+            if (this.jumpCharge === 0) { this.jumpCharge = 0.05; }
             // La charge monte plus vite sur les petites planètes (divisé par radius)
             this.jumpCharge = Math.min(1, this.jumpCharge + 0.6 / data.radius);
             // Affichage de la barre de charge
-            this.chargeBarBg.setVisible(true); this.chargeBar.setVisible(true); this.chargeText.setVisible(true);
+            this.chargeBarBg.setVisible(true);
+            this.chargeBar.setVisible(true);
+            this.chargeText.setVisible(true);
             this.chargeBar.setSize(Math.floor(this.jumpCharge * 196), 14);
             // La couleur change selon le niveau de charge : jaune → orange → rouge
-            this.chargeBar.setFillStyle(this.jumpCharge < 0.5 ? 0xffcc00 : this.jumpCharge < 0.85 ? 0xff8800 : 0xff2200);
+            if (this.jumpCharge < 0.5) {
+                this.chargeBar.setFillStyle(0xffcc00);
+            } else if (this.jumpCharge < 0.85) {
+                this.chargeBar.setFillStyle(0xff8800);
+            } else {
+                this.chargeBar.setFillStyle(0xff2200);
+            }
         }
 
-        // darties.fr — bases Phaser : JustUp détecte le relâchement de la touche (une seule fois)
+        // JustUp détecte le relâchement de la touche (une seule fois)
         if (Phaser.Input.Keyboard.JustUp(this.cursors.space) && this.jumpCharge > 0) {
             // Force de lancement = dépend de la taille de la planète et de la charge
             const force = (300 + data.radius * 3.5) * Math.max(0.2, this.jumpCharge);
-            // darties.fr — bases Phaser : setVelocity lance le joueur dans la direction radiale
+            // setVelocity lance le joueur dans la direction radiale
             this.player.body.setVelocity(Math.cos(this.angle) * force, Math.sin(this.angle) * force);
             this.jumpCharge = 0;
-            this.chargeBarBg.setVisible(false); this.chargeBar.setVisible(false); this.chargeText.setVisible(false);
-            this.isOnPlanet = false; this.isFlying = true; this.justLaunched = true;
+            this.chargeBarBg.setVisible(false);
+            this.chargeBar.setVisible(false);
+            this.chargeText.setVisible(false);
+            this.isOnPlanet = false;
+            this.isFlying = true;
+            this.justLaunched = true;
             this.playerSprite.anims.play('jump', true);
-            // darties.fr — timers : après 400ms on peut de nouveau atterrir
+            // après 400ms on peut de nouveau atterrir
             this.time.delayedCall(400, () => { this.justLaunched = false; });
         }
     }
@@ -321,36 +374,44 @@ class GameScene extends Phaser.Scene {
 
         // Gravité custom : F = G * rayon / distance²
         // Plus la planète est grande et proche, plus elle attire fort
-        let closestIdx = -1, closestDist = Infinity;
-        this.planetData.forEach((data, i) => {
-            if (!this.planetAlive[i] || data.type === 'repulsive') return;
-            const dist = Math.hypot(data.x - this.player.x, data.y - this.player.y);
-            if (dist < closestDist) { closestDist = dist; closestIdx = i; }
-        });
-        if (closestIdx === -1) return;
+        let closestIdx = -1;
+        let closestDist = Infinity;
+        for (let i = 0; i < this.planetData.length; i++) {
+            if (!this.planetAlive[i] || this.planetData[i].type === 'repulsive') { continue; }
+            const dx = this.planetData[i].x - this.player.x;
+            const dy = this.planetData[i].y - this.player.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < closestDist) {
+                closestDist = dist;
+                closestIdx = i;
+            }
+        }
+        if (closestIdx === -1) { return; }
 
         const t = this.planetData[closestIdx];
-        const dx = t.x - this.player.x, dy = t.y - this.player.y;
-        const dist = Math.hypot(dx, dy);
+        const dx = t.x - this.player.x;
+        const dy = t.y - this.player.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
         const delta = this.game.loop.delta / 1000; // temps écoulé depuis la dernière frame (en secondes)
 
-        // darties.fr — bases Phaser : setVelocityX/Y pour modifier la trajectoire du joueur
+        // setVelocityX/Y pour modifier la trajectoire du joueur
         // On ajoute la force gravitationnelle à la vitesse actuelle
         const force = Phaser.Math.Clamp(this.G * t.radius / (dist * dist) * 2, 0, 1200);
         this.player.body.setVelocityX(this.player.body.velocity.x + (dx / dist) * force * delta);
         this.player.body.setVelocityY(this.player.body.velocity.y + (dy / dist) * force * delta);
 
         // Planètes répulsives : même formule mais force inversée (on repousse le joueur)
-        this.planetData.forEach((data, i) => {
-            if (!this.planetAlive[i] || data.type !== 'repulsive') return;
-            const rdx = this.player.x - data.x, rdy = this.player.y - data.y;
-            const rdist = Math.hypot(rdx, rdy);
-            if (rdist < data.radius * 6 && rdist > 1) { // seulement dans la zone de répulsion
-                const rep = Phaser.Math.Clamp(this.G * 1.5 * data.radius / (rdist * rdist), 0, 700);
+        for (let i = 0; i < this.planetData.length; i++) {
+            if (!this.planetAlive[i] || this.planetData[i].type !== 'repulsive') { continue; }
+            const rdx = this.player.x - this.planetData[i].x;
+            const rdy = this.player.y - this.planetData[i].y;
+            const rdist = Math.sqrt(rdx * rdx + rdy * rdy);
+            if (rdist < this.planetData[i].radius * 6 && rdist > 1) { // seulement dans la zone de répulsion
+                const rep = Phaser.Math.Clamp(this.G * 1.5 * this.planetData[i].radius / (rdist * rdist), 0, 700);
                 this.player.body.setVelocityX(this.player.body.velocity.x + (rdx / rdist) * rep * delta);
                 this.player.body.setVelocityY(this.player.body.velocity.y + (rdy / rdist) * rep * delta);
             }
-        });
+        }
 
         // Le joueur se tourne dans le sens de son mouvement
         this.player.rotation = Math.atan2(this.player.body.velocity.y, this.player.body.velocity.x) + Math.PI / 2;
@@ -358,15 +419,16 @@ class GameScene extends Phaser.Scene {
 
     onLanding(planetIndex) {
         // Appelé quand le joueur atterrit sur une planète
-
-        // darties.fr — animations : on remet l'animation idle
         this.playerSprite.anims.play('idle', true);
         const data = this.planetData[planetIndex];
 
         if (data.type === 'safe') {
-            // darties.fr — multi-niveaux : la planète safe déclenche la suite
-            if (this.level === 3) this.onVictory();       // niveau 3 = victoire
-            else this.triggerBlackHole(planetIndex);       // autres niveaux = trou noir → niveau suivant
+            // la planète safe déclenche la suite
+            if (this.level === 3) {
+                this.onVictory();              // niveau 3 = victoire
+            } else {
+                this.triggerBlackHole(planetIndex); // autres niveaux = trou noir → niveau suivant
+            }
             return;
         }
         // Planète normale : elle commence à se désintégrer
@@ -375,14 +437,23 @@ class GameScene extends Phaser.Scene {
 
     onVictory() {
         // Déclenché quand le joueur atteint le vaisseau au niveau 3
-        if (this.gameOver) return;
+        if (this.gameOver) { return; }
         this.gameOver = true;
         const elapsed = Math.floor((this.time.now - this.startTime) / 1000);
-        const shipData = this.planetData.find(p => p.type === 'safe');
-        const shipGfx  = this.planetGraphics[this.planetData.indexOf(shipData)];
+
+        // On cherche le vaisseau dans la liste des planètes
+        let shipData = null;
+        let shipIndex = 0;
+        for (let i = 0; i < this.planetData.length; i++) {
+            if (this.planetData[i].type === 'safe') {
+                shipData = this.planetData[i];
+                shipIndex = i;
+            }
+        }
+        const shipGfx = this.planetGraphics[shipIndex];
         this.playerSprite.anims.play('walk-right', true);
 
-        // darties.fr — tweens : le joueur glisse vers le vaisseau puis disparaît
+        // tweens : le joueur glisse vers le vaisseau puis disparaît
         this.tweens.add({
             targets: [this.player, this.playerSprite], x: shipData.x, y: shipData.y, duration: 1000, ease: 'Sine.easeIn',
             onComplete: () => {
@@ -404,18 +475,22 @@ class GameScene extends Phaser.Scene {
     triggerBlackHole(planetIndex) {
         // Animation de trou noir sur la planète safe des niveaux 1 et 2
         // Elle vire au noir, aspire le joueur, puis on passe au niveau suivant
-        if (this.blackHoleActive) return;
+        if (this.blackHoleActive) { return; }
         this.blackHoleActive = true;
         const data = this.planetData[planetIndex];
         const gfx  = this.planetGraphics[planetIndex];
 
-        // darties.fr — tweens : la planète change de couleur et grossit
+        // tweens : la planète change de couleur et grossit
         this.tweens.add({
             targets: gfx, duration: 1200,
             onUpdate: (tween) => {
                 const p = tween.progress;
                 // La planète vire progressivement au violet puis au noir
-                gfx.setTint(p < 0.5 ? Phaser.Display.Color.GetColor(Math.floor(120*(1-p*2)), 0, 150) : 0x110022);
+                if (p < 0.5) {
+                    gfx.setTint(Phaser.Display.Color.GetColor(Math.floor(120*(1-p*2)), 0, 150));
+                } else {
+                    gfx.setTint(0x110022);
+                }
                 gfx.setScale(1 + p * 0.6);
             },
             onComplete: () => { gfx.setTint(0x000000); }
@@ -424,7 +499,7 @@ class GameScene extends Phaser.Scene {
         // Le joueur rétrécit et disparaît (aspiré)
         this.tweens.add({ targets: [this.player, this.playerSprite], scaleX: 0, scaleY: 0, alpha: 0, duration: 1400, ease: 'Sine.easeIn' });
 
-        // darties.fr — timers : après l'animation, on passe au niveau suivant
+        // timers : après l'animation, on passe au niveau suivant
         this.time.delayedCall(1800, () => {
             this.cameras.main.fade(500, 0, 0, 0);
             this.time.delayedCall(500, () => { this.scene.start('GameScene', { level: this.level + 1 }); });
@@ -436,12 +511,13 @@ class GameScene extends Phaser.Scene {
         // Elle se dégrade en 8 étapes sur 3.2 secondes
         const data = this.planetData[planetIndex];
         const gfx  = this.planetGraphics[planetIndex];
-        if (!gfx || !gfx.active) return;
+        if (!gfx || !gfx.active) { return; }
 
-        const steps = 8, totalTime = 3200; // 8 étapes en 3.2s
+        const steps = 8;
+        const totalTime = 3200; // 8 étapes en 3.2s
         let step = 0;
 
-        // darties.fr — timers : time.addEvent() répète le callback toutes les 400ms (8 fois)
+        // time.addEvent() répète le callback toutes les 400ms (8 fois)
         this.time.addEvent({
             delay: totalTime / steps, repeat: steps - 1,
             callback: () => {
@@ -455,9 +531,9 @@ class GameScene extends Phaser.Scene {
                     gfx.setTint(Phaser.Display.Color.GetColor(255, Math.floor(255*(1-p)), 50));
                 }
 
-                // darties.fr — tweens : 4 débris s'envolent à chaque étape
+                // tweens : 4 débris s'envolent à chaque étape
                 for (let i = 0; i < 4; i++) {
-                    const a = Phaser.Math.FloatBetween(0, Math.PI*2); // direction aléatoire
+                    const a = Phaser.Math.FloatBetween(0, Math.PI * 2); // direction aléatoire
                     const d = this.add.circle(data.x + Math.cos(a)*data.radius*0.5, data.y + Math.sin(a)*data.radius*0.5, Phaser.Math.Between(2,6), data.debrisColor, 0.85);
                     this.tweens.add({ targets: d, x: d.x + Phaser.Math.Between(-60,60), y: d.y + Phaser.Math.Between(20,80), alpha: 0, duration: 600, onComplete: () => d.destroy() });
                 }
@@ -465,9 +541,9 @@ class GameScene extends Phaser.Scene {
                 // À la dernière étape : la planète explose et est supprimée
                 if (step >= steps) {
                     this.planetAlive[planetIndex] = false; // la planète n'existe plus
-                    if (gfx.active) gfx.destroy();         // on supprime l'image
+                    if (gfx.active) { gfx.destroy(); }    // on supprime l'image
                     // Si le joueur est encore dessus → mort
-                    if (this.isOnPlanet && this.currentPlanetIndex === planetIndex) this.onDeath();
+                    if (this.isOnPlanet && this.currentPlanetIndex === planetIndex) { this.onDeath(); }
                 }
             }
         });
@@ -475,20 +551,27 @@ class GameScene extends Phaser.Scene {
 
     onDeath() {
         // Déclenché quand le joueur meurt (tombe dans l'espace ou planète explose sous lui)
-        if (this.gameOver) return;
+        if (this.gameOver) { return; }
         this.gameOver = true;
         this.cameras.main.flash(400, 255, 0, 0); // flash rouge à l'écran
-        // darties.fr — timers + multi-niveaux : on relance le même niveau après 800ms
+        // on relance le même niveau après 800ms
         this.time.delayedCall(800, () => { this.scene.start('GameScene', { level: this.level }); });
     }
 
     showLevelBanner() {
         // Affiche brièvement le nom du niveau au centre de l'écran au démarrage
-        // darties.fr — tweens : le texte apparaît puis disparaît (yoyo)
         const { width, height } = this.scale;
-        const banner = this.add.text(width/2, height/2, { 1:'NIVEAU 1', 2:'NIVEAU 2', 3:'NIVEAU FINAL' }[this.level],
-            { fontSize: '56px', fontFamily: 'Arial Black', color: { 1:'#44aaff', 2:'#ffaa44', 3:'#ff4444' }[this.level] }
-        ).setOrigin(0.5).setScrollFactor(0).setDepth(200).setAlpha(0);
+
+        let texte;
+        let couleur;
+        if (this.level === 1) { texte = 'NIVEAU 1';     couleur = '#44aaff'; }
+        else if (this.level === 2) { texte = 'NIVEAU 2'; couleur = '#ffaa44'; }
+        else { texte = 'NIVEAU FINAL'; couleur = '#ff4444'; }
+
+        const banner = this.add.text(width/2, height/2, texte, { fontSize: '56px', fontFamily: 'Arial Black', color: couleur })
+            .setOrigin(0.5).setScrollFactor(0).setDepth(200).setAlpha(0);
+
+        // le texte apparaît puis disparaît (yoyo)
         // alpha: 1 = apparaît, yoyo: true = repart en arrière (disparaît), hold = temps d'attente au max
         this.tweens.add({ targets: banner, alpha: 1, duration: 400, yoyo: true, hold: 1200, onComplete: () => banner.destroy() });
     }

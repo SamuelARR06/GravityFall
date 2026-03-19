@@ -3,13 +3,13 @@ class MenuScene extends Phaser.Scene {
         super({ key: 'MenuScene' });
     }
     preload() {
-        // darties.fr — bases Phaser : chargement de l'image de fond
+        //  chargement de l'image de fond
         this.load.image('background', 'assets/space.jpg');
     }
     create() {
         const { width, height } = this.scale;
 
-        // darties.fr — bases Phaser : afficher l'image de fond
+        //  afficher l'image de fond
         this.add.image(width / 2, height / 2, 'background').setDisplaySize(width, height);
 
         this.add.text(width / 2, height / 3, 'Gravity Fall', {
@@ -26,7 +26,7 @@ class MenuScene extends Phaser.Scene {
             fontSize: '24px', fontFamily: 'Arial', color: '#ffffff'
         }).setOrigin(0.5);
 
-        // darties.fr — tweens : clignotement du texte blanc
+        // clignotement du texte blanc
         this.tweens.add({ targets: startText, alpha: 0, duration: 800, yoyo: true, repeat: -1 });
 
         this.add.text(width / 2, height * 0.80,
@@ -39,10 +39,10 @@ class MenuScene extends Phaser.Scene {
             fontSize: '25px', fontFamily: 'Arial', color: '#ff0000', align: 'center'
         }).setOrigin(0.5);
 
-        // darties.fr — tweens : clignotement de la phrase rouge
+        // clignotement de la phrase rouge
         this.tweens.add({ targets: redText, alpha: 0, duration: 500, yoyo: true, repeat: -1 });
 
-        // darties.fr — bases Phaser : écouter la touche ESPACE
+        // touche ESPACE
         this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE).once('down', () => {
             this.scene.start('GameScene', { level: 1 });
         });
